@@ -34,6 +34,7 @@ DEFAULTS: dict[str, Any] = {
     "dream_variants": 4,
     "teacher_budget_tokens": 60000,
     "sandbox": True,
+    "desktop_reply_badges": True,
 }
 
 

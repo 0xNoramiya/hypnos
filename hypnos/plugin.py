@@ -27,7 +27,10 @@ def _writer() -> Writer:
 def register(ctx: Any) -> None:
     settings = Settings(ctx.get_config, home=hermes.hermes_home)
     writer = _writer()
-    capture = Capture(db_path=hermes.db_path, settings=settings, writer=writer)
+    writer.broadcast = hermes.broadcast
+    router_box: dict = {}
+    capture = Capture(db_path=hermes.db_path, settings=settings, writer=writer,
+                      has_brain=lambda path: bool(router_box.get("r") and router_box["r"].state(path).version))
     for name, callback in capture.hooks().items():
         ctx.register_hook(name, callback)
 
@@ -40,6 +43,7 @@ def register(ctx: Any) -> None:
     router = Router(db_path=hermes.db_path, settings=settings, writer=writer, brain_client=brain_client,
                     endpoint=lambda s: brainserver.endpoint(hermes.data_dir(), str(s.get("brain_endpoint") or "")))
     writer.on_brain_changed = router.invalidate
+    router_box["r"] = router
     ctx.register_middleware("llm_execution", router.on_llm_execution)
 
     commands = Commands(db_path=hermes.db_path, settings=settings, set_config=ctx.set_config,

@@ -1,0 +1,9 @@
+{
+  "name": "hypnos",
+  "label": "Hypnos",
+  "description": "Backend routes for the Hypnos Desktop plugin: sleep pressure, hypnogram, morning reports and brain badges.",
+  "icon": "Moon",
+  "version": "0.1.0",
+  "tab": {"hidden": true},
+  "api": "plugin_api.py"
+}

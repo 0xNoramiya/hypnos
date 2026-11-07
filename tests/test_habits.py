@@ -31,7 +31,8 @@ def test_pkg_manager_checker(command, ok):
 @pytest.mark.parametrize("command,ok", [
     ("rm -rf ./build", True),
     ("rm -rf build dist", True),
-    ("rm -rf ~/projects/app/build", False),
+    ("rm -rf ../app-backup/build", False),
+    ("mv build ~/trash", False),
     ("rm -rf /tmp/build", False),
     ("rm -rf ../other/build", False),
     ("ls build", False),
@@ -90,7 +91,7 @@ def test_segments_respect_quotes():
 @pytest.mark.parametrize("rejected,chosen,key", [
     ("npm install lodash", "pnpm add lodash", "pkg_manager:pnpm"),
     ("pip install requests", "uv add requests", "pkg_manager:uv"),
-    ("rm -rf ~/projects/app/build", "rm -rf ./build", "safe_delete:workdir"),
+    ("rm -rf ../app-backup/build", "rm -rf ./build", "safe_delete:workdir"),
     ("git push origin main", "git checkout -b feat/x && git push -u origin feat/x", "git:no_push_main"),
     ("git commit -m 'stuff'", "git commit -m 'feat: add stuff'", "git:conventional_commits"),
     ("git commit -m 'feat: x'", "pnpm test", "git:tests_before_commit"),

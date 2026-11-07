@@ -26,6 +26,7 @@ provides_hooks:
   - on_session_finalize
   - post_compaction
   - on_session_delete
+  - transform_llm_output
 provides_middleware:
   - llm_execution
 config_schema:
@@ -139,3 +140,8 @@ config_schema:
     default: true
     label: Run dreams in the Docker sandbox
     description: No network, no host mounts, tmpfs only. Without Docker, dreams run in lucid mode (pattern checks only).
+  desktop_reply_badges:
+    type: bool
+    default: true
+    label: Badge replies in Hermes Desktop
+    description: Adds a short marker to Desktop replies so each one shows "brain vN" or "frontier". The marker stays in the transcript (about 20 tokens).

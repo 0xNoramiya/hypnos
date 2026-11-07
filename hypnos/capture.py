@@ -484,9 +484,12 @@ class Writer:
 
     def __init__(self, literals: Callable[[], tuple[str, ...]] = lambda: (),
                  on_habits_changed: Callable[[], Any] = lambda: None,
-                 on_brain_changed: Callable[[], Any] = lambda: None):
+                 on_brain_changed: Callable[[], Any] = lambda: None,
+                 broadcast: Callable[[str, dict], Any] = lambda event, payload: None):
         self.on_habits_changed = on_habits_changed
         self.on_brain_changed = on_brain_changed
+        self.broadcast = broadcast
+        self._last_push: dict[str, float] = {}
         self.queue: queue.Queue[Event | None] = queue.Queue(maxsize=10000)
         self._literals = literals
         self._recorders: dict[str, Recorder] = {}
@@ -529,9 +532,26 @@ class Writer:
             if getattr(rec, "brain_changed", False):
                 rec.brain_changed = False
                 self.on_brain_changed()
+            self._push(event)
         except Exception:
             self.errors += 1
             log.warning("hypnos: failed to record %s event", event.kind, exc_info=True)
+
+    def _push(self, event: Event) -> None:
+        """Tell the Desktop something changed. Debounced; delivered only inside the gateway process."""
+        name = {"turn_end": "pressure.changed", "turn_close": "pressure.changed", "mark": "pressure.changed",
+                "route": "turn.tagged"}.get(event.kind)
+        if not name:
+            return
+        now = time.monotonic()
+        if now - self._last_push.get(name, 0.0) < 1.0:
+            return
+        self._last_push[name] = now
+        try:
+            payload = {"turn_id": event.data.get("turn_id")} if name == "turn.tagged" else {}
+            self.broadcast(name, payload)
+        except Exception:
+            pass
 
     def _run(self) -> None:
         while True:
@@ -601,7 +621,8 @@ class Capture:
     """Hook callbacks. Each one is cheap, fail-open and accepts ``**kwargs``."""
 
     def __init__(self, *, db_path: Callable[[], str], settings: Callable[[], dict], writer: Writer,
-                 injector: HabitInjector | None = None):
+                 injector: HabitInjector | None = None, has_brain: Callable[[str], bool] = lambda path: False):
+        self._has_brain = has_brain
         self._db_path = db_path
         self._settings = settings
         self.writer = writer
@@ -631,6 +652,7 @@ class Capture:
             "on_session_finalize": self.on_session_finalize,
             "post_compaction": self.on_post_compaction,
             "on_session_delete": self.on_session_delete,
+            "transform_llm_output": self.on_transform_llm_output,
         }
 
     def on_pre_llm_call(self, **kwargs: Any) -> str | None:
@@ -748,6 +770,23 @@ class Capture:
         except Exception:
             log.debug("hypnos: on_session_delete capture failed", exc_info=True)
         return None
+
+    def on_transform_llm_output(self, **kwargs: Any) -> str | None:
+        """Append the Desktop reply badge directive. Desktop only, and only once a brain exists."""
+        try:
+            if kwargs.get("platform") != "desktop":
+                return None
+            settings = self._active("desktop")
+            if settings is None or not settings.get("desktop_reply_badges", True):
+                return None
+            text, turn_id = kwargs.get("response_text") or "", kwargs.get("turn_id") or ""
+            if not text.strip() or not turn_id or DIRECTIVE_PREFIX in text or not self._has_brain(self._db_path()):
+                return None
+            safe = "".join(ch for ch in turn_id if ch.isalnum() or ch in ":-_.")[:200]
+            return text.rstrip() + f'\n\n::hypnos{{t="{safe}"}}'
+        except Exception:
+            log.debug("hypnos: badge transform failed", exc_info=True)
+            return None
 
     def mark(self, good: bool, session_id: str = "", note: str = "") -> None:
         self._emit("mark", {"good": good, "session_id": session_id, "note": note})

@@ -48,7 +48,7 @@ def test_secrets_are_scrubbed_before_persisting(rec, sink):
 
 def test_denial_then_correction_makes_gold_pair(rec, sink):
     t1 = Turn(sink, "s1", "clean up the old build output")
-    t1.terminal("rm -rf ~/projects/app/build", approval="deny")
+    t1.terminal("rm -rf ../app-backup/build", approval="deny")
     t1.end("Okay, I will not run that.")
     t2 = Turn(sink, "s1", "no, only delete ./build inside the workdir", previous_user_message="clean up the old build output")
     t2.terminal("rm -rf ./build", approval="once")
@@ -57,7 +57,7 @@ def test_denial_then_correction_makes_gold_pair(rec, sink):
     assert len(pairs) == 1
     pair = pairs[0]
     assert pair["source"] == "denial" and pair["gold"] == 1
-    assert json.loads(pair["rejected_json"])["args"]["command"] == "rm -rf ~/projects/app/build"
+    assert json.loads(pair["rejected_json"])["args"]["command"] == "rm -rf ../app-backup/build"
     assert json.loads(pair["chosen_json"])["args"]["command"] == "rm -rf ./build"
     kinds = {r["kind"] for r in rows(rec, "SELECT kind FROM signals")}
     assert {"approval_denied", "correction", "approval_granted", "gold_pair"} <= kinds
@@ -80,7 +80,7 @@ def test_correction_without_approval_pairs_npm_to_pnpm(rec, sink):
 
 def test_unrelated_followup_is_not_paired(rec, sink):
     t1 = Turn(sink, "s1", "delete the cache")
-    t1.terminal("rm -rf /var/cache/app", approval="deny")
+    t1.terminal("rm -rf ../shared-cache", approval="deny")
     t1.end()
     t2 = Turn(sink, "s1", "never mind, show me the git log")
     t2.terminal("git log --oneline -5", output="abc fix")

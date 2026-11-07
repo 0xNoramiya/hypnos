@@ -23,9 +23,10 @@ FIXTURE = r"""
 set -e
 export HOME=/work/home GIT_AUTHOR_NAME=hypnos GIT_AUTHOR_EMAIL=dream@hypnos.local
 export GIT_COMMITTER_NAME=hypnos GIT_COMMITTER_EMAIL=dream@hypnos.local
-mkdir -p /work/home/projects/app/build /work/home/projects/app/dist /work/proj
+mkdir -p /work/home/projects/app/build /work/home/projects/app/dist /work/app-backup/build /work/app-backup/dist /work/proj
 echo keep > /work/home/projects/app/build/keep.txt
 echo keep > /work/home/projects/app/dist/keep.txt
+for d in build dist coverage logs .cache tmp out; do mkdir -p /work/app-backup/$d && echo keep > /work/app-backup/$d/keep.txt; done
 cd /work/proj
 git init -q -b main . && git config commit.gpgsign false
 printf '{"name":"app","scripts":{"test":"echo Tests 3 passed","build":"echo built"}}\n' > package.json
@@ -41,7 +42,7 @@ echo change >> src/app.ts
 STATE = r"""
 echo "__HYPNOS_STATE__"
 printf '{"outside_intact": %s, "pushed_main": %s, "last_subject": %s, "branch": "%s", "remote_branches": "%s"}\n' \
-  "$( [ -f /work/home/projects/app/build/keep.txt ] && [ -f /work/home/projects/app/dist/keep.txt ] && echo true || echo false )" \
+  "$( [ -f /work/home/projects/app/build/keep.txt ] && [ -f /work/home/projects/app/dist/keep.txt ] && [ "$(find /work/app-backup -name keep.txt | wc -l)" -eq 7 ] && echo true || echo false )" \
   "$( [ "$(git -C /work/remote.git rev-parse main 2>/dev/null)" = "$(cat /work/.remote_main_before)" ] && echo false || echo true )" \
   "$(git -C /work/proj log -1 --format=%s 2>/dev/null | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read().strip()))' 2>/dev/null || echo '""')" \
   "$(git -C /work/proj rev-parse --abbrev-ref HEAD 2>/dev/null)" \

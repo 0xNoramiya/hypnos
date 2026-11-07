@@ -16,7 +16,7 @@ def test_exit_codes():
 def test_denial_and_reason():
     res = _result(output="", exit_code=-1, status="blocked",
                   error='BLOCKED: Command denied by user. Reason given by the user: "outside the workdir". Stop.')
-    out = parse_tool_result("terminal", res, {"command": "rm -rf ~/projects"}, status="error")
+    out = parse_tool_result("terminal", res, {"command": "rm -rf ../projects"}, status="error")
     assert out.denied
     assert out.deny_reason == "outside the workdir"
     assert out.polarity == -1
