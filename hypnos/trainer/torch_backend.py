@@ -53,7 +53,11 @@ class TorchBackend:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         base = AutoModelForCausalLM.from_pretrained(base_model, dtype=self.dtype)
         base.to(self.device)
-        if adapter:
+        if adapter and not trainable:
+            # Inference only: fold the LoRA into the weights. Generation through the PEFT wrapper is about
+            # 10x slower on CPU.
+            self.model = PeftModel.from_pretrained(base, adapter).merge_and_unload()
+        elif adapter:
             self.model = PeftModel.from_pretrained(base, adapter, is_trainable=trainable)
         elif trainable:
             cfg = lora or {}
@@ -204,8 +208,12 @@ class TorchBackend:
         items = list(prompts)
         out: list[dict] = []
         ctx = self.model.disable_adapter() if (not adapter_enabled and hasattr(self.model, "disable_adapter")) else None
+        merged = False
         if ctx is not None:
             ctx.__enter__()
+        elif hasattr(self.model, "merge_adapter"):
+            self.model.merge_adapter()  # temporary, undone below so training continues on the LoRA weights
+            merged = True
         try:
             for start in range(0, len(items), batch_size):
                 chunk = items[start:start + batch_size]
@@ -235,6 +243,8 @@ class TorchBackend:
         finally:
             if ctx is not None:
                 ctx.__exit__(None, None, None)
+            if merged:
+                self.model.unmerge_adapter()
             tok.padding_side = "right"
         return out
 

@@ -62,4 +62,4 @@ def test_rollback(slept):
 
 def test_night_config_from_settings():
     cfg = sleepcmd.night_config({"base_model": "x/y", "cycles": 2, "night_max_minutes": 5}, tiny=True)
-    assert cfg.model == cfg.tiny_model and cfg.cycles == 2 and cfg.max_minutes == 5 and cfg.max_steps == 60
+    assert cfg.model == cfg.tiny_model and cfg.cycles == 2 and cfg.max_minutes == 5 and cfg.max_steps == 40 and cfg.effective_batch == 4

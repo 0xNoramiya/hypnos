@@ -29,7 +29,8 @@ def night_config(settings: dict, *, tiny: bool = False, cycles: int | None = Non
         retention_days=int(settings.get("retention_days") or 90),
         teacher_usd_per_mtok=float(settings.get("teacher_usd_per_mtok") or 0),
         trigger=trigger,
-        **({"max_steps": 60, "max_heldout": 20, "probes_per_habit": 6, "epochs_sft": 4.0, "epochs_dpo": 4.0}
+        **({"max_steps": 40, "max_heldout": 20, "probes_per_habit": 6, "epochs_sft": 3.0, "epochs_dpo": 3.0,
+            "hyper": {"batch_size": 4, "grad_accum": 1, "max_len": 768, "max_new_tokens": 64, "gen_batch": 16}}
            if tiny else {}))
 
 

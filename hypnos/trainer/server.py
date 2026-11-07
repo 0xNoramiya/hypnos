@@ -31,20 +31,11 @@ class BrainServer:
         self.started = time.time()
 
     def swap(self, path: str | None, version: int | None) -> None:
-        from peft import PeftModel
+        """Load a new adapter. The server keeps the LoRA merged into the weights, so it reloads the base."""
+        from .torch_backend import TorchBackend
+        fresh = TorchBackend(self.base_model, path, trainable=False)
         with self.lock:
-            model = self.backend.model
-            if path is None:
-                if isinstance(model, PeftModel):
-                    self.backend.model = model.unload()
-            elif isinstance(model, PeftModel):
-                name = f"v{version}"
-                model.load_adapter(path, adapter_name=name)
-                model.set_adapter(name)
-                for old in [a for a in list(model.peft_config) if a != name]:
-                    model.delete_adapter(old)
-            else:
-                self.backend.model = PeftModel.from_pretrained(model, path, adapter_name=f"v{version}")
+            self.backend = fresh
             self.adapter, self.version = path, version
 
     def complete(self, body: dict) -> dict:

@@ -61,6 +61,11 @@ class NightConfig:
     def model(self) -> str:
         return self.tiny_model if self.tiny else self.base_model
 
+    @property
+    def effective_batch(self) -> int:
+        bs, acc = self.hyper.get("batch_size"), self.hyper.get("grad_accum", 1)
+        return int(bs) * int(acc) if isinstance(bs, int) else 8
+
 
 def distribute(total: int, weights: list[int]) -> list[int]:
     if total <= 0 or not weights:
@@ -325,8 +330,8 @@ class Night:
                 return report
             if python is None:
                 raise NightError(install_hint(self.data_dir))
-            phases = schedule(cfg.cycles, steps_for(len(data["sft"]), cfg.epochs_sft, cfg),
-                              steps_for(len(data["dpo"]), cfg.epochs_dpo, cfg))
+            phases = schedule(cfg.cycles, steps_for(len(data["sft"]), cfg.epochs_sft, cfg, cfg.effective_batch),
+                              steps_for(len(data["dpo"]), cfg.epochs_dpo, cfg, cfg.effective_batch))
             version = (self.conn.execute("SELECT MAX(version) FROM brains").fetchone()[0] or 0) + 1
             adapter_dir = self.data_dir / "brains" / f"v{version}"
             job = {"kind": "night", "base_model": cfg.model, "seed": self.night_id,
