@@ -2,7 +2,7 @@
 
 A product-launch trailer: black stage, one idea per beat, big type, long holds, then a hard hit. The god of
 sleep is the hero image; everything about the product is real motion graphics built from the GPU run in the
-README. The caption "Synthetic demo data · real training runs" stays on screen the whole time.
+README.
 
 - Built with HyperFrames (motion graphics and the edit), Higgsfield (images and three image-to-video shots of
   the god) and ElevenLabs (narration in the voice "Orion", and the score with ElevenLabs Music).
@@ -23,10 +23,10 @@ README. The caption "Synthetic demo data · real training runs" stays on screen 
 
 | Time | Beat | Picture and motion | Voice |
 |---|---|---|---|
-| 0.0 to 7.0 | The loop | Black, a felt-piano note. A mono chat bubble types on: "no, we use pnpm here", stamped MON 09:12. A second one, TUE 10:40. A third, in Indonesian, WED 14:03: "bukan npm, pakai pnpm". A counter turns ×1, ×2, ×3, the last in red. | "You told it to use pnpm." ... "Then you told it again. And again." |
+| 0.0 to 7.0 | The loop | Black, a felt-piano note. A mono chat bubble types on: "no, we use pnpm here", stamped MON 09:12. A second one, TUE 10:40. A third, WED 14:03: "use pnpm instead, not npm". A counter turns ×1, ×2, ×3, the last in red. | "You told it to use pnpm." ... "Then you told it again. And again." |
 | 7.0 to 12.0 | Text is not learning | A `MEMORY.md` card fills with the same line, faster and faster, and scrolls away; the lines grey out. Beside it: "Written down." then, in lavender italic, "Never learned." | "Agents write down what you say. They never learn how you work." |
 | 12.0 to 23.0 | Reveal | A dip to black, then the god asleep under a crescent moon (Higgsfield shot: slow push, drifting mist) on the score's first hit. "Introducing", then HYPNOS letter by letter, a hairline, "Hermes learns in its sleep.", "A Hermes Agent plugin". Stars twinkle in the empty sky. | "This is Hypnos." ... "Hermes learns in its sleep." |
-| 23.0 to 33.0 | Day | Zoom through on the full arrangement's entrance. "By day, it watches." Real day-1 signals arrive as chips: approved `pnpm add zod`, denied `git push origin main`, corrected "no, we use pnpm here", tests 12 passed, corrected "bukan itu, hapus yang di folder project". With each one the sleep-pressure ring steps up, to 78%. | "By day, it watches. What you approve. What you deny. What you correct." |
+| 23.0 to 33.0 | Day | Zoom through on the full arrangement's entrance. "By day, it watches." Real day-1 signals arrive as chips: approved `pnpm add zod`, denied `git push origin main`, corrected "no, we use pnpm here", tests 12 passed, corrected "only delete inside this project". With each one the sleep-pressure ring steps up, to 78%. | "By day, it watches. What you approve. What you deny. What you correct." |
 | 33.0 to 41.6 | Night | Blur crossfade onto the dream nebula. "At night, it sleeps." Night 2's real hypnogram draws itself: N2, then four cycles where N3 shrinks and REM grows. Seven red nightmare diamonds pop early in N2. Callouts: "N3 · replay the day", "REM · dream the mistakes". A real dream from that night: "Empty dist, it is huge." The brain answered `pnpm test` (nightmare); the chosen answer is `rm -rf ./dist`, which DPO prefers. Four diamonds turn green: 4 of 7 nightmares resolved. | "At night, it sleeps." ... "It replays the day. It dreams up new versions of its mistakes, practises them in a sandbox, and trains what it learned into a small brain of its own." |
 | 41.6 to 51.0 | A brain of its own; the principle | Focus pull into the lattice shot (Higgsfield): golden filaments link up. "a small brain of its own", "LoRA adapter · versioned". Then two boxes: "Habits → weights" and "Facts → memory". Two thoughts appear in the middle, "Use pnpm, never npm." and "The API runs on Postgres 16.", and each slides into its box. | "Habits go into the weights. Facts stay in memory." |
 | 51.0 to 63.0 | The exam | A flash of dawn into the waking shot (Higgsfield): gold light, the eyes open. On the score's re-entry the face settles left into night and the exam panel arrives: held-out next action 67% → 83%, habit probes 70% → 78%, dream verifiers 60% → 80%. Stamp: PROMOTED, brain v2 takes over. Then NIGHT 4 · REJECTED · v2 stays. | "In the morning, it takes an exam. Pass, and the new brain takes over. Fail, and the old one stays." |
