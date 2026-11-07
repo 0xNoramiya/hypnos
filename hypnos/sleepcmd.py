@@ -55,7 +55,7 @@ def run_sleep(*, db_path: str, data_dir: Path, memories_dir: Path | None, settin
         conn = dbmod.open_db(db_path)
         brain = conn.execute("SELECT * FROM brains WHERE version = ?", (report["version"],)).fetchone()
         conn.close()
-        sync_server(data_dir, dict(brain) if brain else None, settings)
+        sync_server(data_dir, dict(brain) if brain else None, settings, allow_start=True, out=out)
     out("")
     out(render_report(report))
     return 0
@@ -179,10 +179,24 @@ def rollback(db_path: str, version: int) -> tuple[str, dict | None]:
         conn.close()
 
 
-def sync_server(data_dir: Path, brain: dict | None, settings: dict) -> None:
-    """Point a running brain server at ``brain`` (or stop it when there is none). Never starts one."""
+def sync_server(data_dir: Path, brain: dict | None, settings: dict, *, allow_start: bool = False,
+                out: Callable[[str], None] = lambda s: None) -> None:
+    """Point the brain server at ``brain``, or stop it when there is none.
+
+    Starts a server only when ``allow_start`` is set (after a promoted night), routing is on, the user has
+    not configured their own endpoint, and ``auto_start_brain_server`` is enabled.
+    """
     from . import brainserver
     if not brainserver.status(data_dir).get("running"):
+        if (allow_start and brain is not None and settings.get("routing", "auto") != "off"
+                and not settings.get("brain_endpoint") and settings.get("auto_start_brain_server", True)):
+            out(f"Starting the brain server for v{brain['version']} on 127.0.0.1:{settings.get('brain_port') or 8765}...")
+            try:
+                brainserver.start(data_dir, base_model=brain["base_model"], adapter=brain["adapter_path"],
+                                  version=brain["version"], trainer_python=str(settings.get("trainer_python") or ""),
+                                  port=int(settings.get("brain_port") or brainserver.DEFAULT_PORT))
+            except Exception as exc:
+                out(f"Could not start the brain server: {exc}")
         return
     if brain is None:
         brainserver.stop(data_dir)

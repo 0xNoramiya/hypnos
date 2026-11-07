@@ -26,6 +26,8 @@ provides_hooks:
   - on_session_finalize
   - post_compaction
   - on_session_delete
+provides_middleware:
+  - llm_execution
 config_schema:
   enabled:
     type: bool
@@ -86,3 +88,35 @@ config_schema:
     type: int
     default: 8765
     label: Brain server port (loopback only)
+  routing:
+    type: str
+    choices: [auto, shadow_only, off]
+    default: auto
+    label: Brain routing
+    description: auto lets a family go live after it agrees with your model in shadow mode; shadow_only never lets the brain answer; off disables routing.
+  shadow_agree_turns:
+    type: int
+    default: 5
+    label: Agreeing shadow turns before a family goes live
+  confidence_threshold:
+    type: float
+    default: -0.35
+    label: Brain confidence threshold
+    description: Minimum mean token log-probability of a brain answer. Below it, your normal model answers instead.
+  brain_timeout_s:
+    type: int
+    default: 20
+    label: Brain timeout (seconds)
+  brain_max_context:
+    type: int
+    default: 3072
+    label: Largest brain prompt (tokens)
+  brain_endpoint:
+    type: str
+    default: ""
+    label: Brain endpoint
+    description: Your own OpenAI-compatible server for the brain (for example http://127.0.0.1:8081/v1). Empty means Hypnos runs its own on loopback.
+  auto_start_brain_server:
+    type: bool
+    default: true
+    label: Start the brain server after a promoted night

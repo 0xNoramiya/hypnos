@@ -23,6 +23,13 @@ DEFAULTS: dict[str, Any] = {
     "night_max_minutes": 60,
     "probe_pass_threshold": 0.9,
     "brain_port": 8765,
+    "routing": "auto",
+    "shadow_agree_turns": 5,
+    "confidence_threshold": -0.35,
+    "brain_timeout_s": 20,
+    "brain_max_context": 3072,
+    "brain_endpoint": "",
+    "auto_start_brain_server": True,
 }
 
 

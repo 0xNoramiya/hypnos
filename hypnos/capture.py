@@ -315,6 +315,73 @@ class Recorder:
             self.conn.execute("DELETE FROM pairs WHERE session_id = ?", (session_id,))
             self.conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
 
+    def on_route(self, d: dict, ts: float) -> None:
+        tools = d.get("tools")
+        if tools:
+            import hashlib
+            tools_json = dbmod.dumps(tools)
+            digest = hashlib.sha256(tools_json.encode()).hexdigest()[:32]
+            self.conn.execute("INSERT OR IGNORE INTO toolsets(hash, tools_json, created_at) VALUES(?,?,?)",
+                              (digest, tools_json, ts))
+            if d.get("turn_id"):
+                self.conn.execute("UPDATE episodes SET toolset_hash = ? WHERE turn_id = ? AND toolset_hash IS NULL",
+                                  (digest, d["turn_id"]))
+        self.conn.execute(
+            "INSERT INTO routes(ts, session_id, turn_id, api_call, family, mode, brain_version, frontier_prompt_tokens, "
+            "brain_prompt_tokens, tokens_saved, pruned_tokens, latency_ms, brain_latency_ms, agreed, confidence, "
+            "fallback_reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (ts, d.get("session_id"), d.get("turn_id"), d.get("api_call"), d.get("family"), d.get("mode"),
+             d.get("brain_version"), d.get("frontier_prompt_tokens"), d.get("brain_prompt_tokens"), d.get("tokens_saved"),
+             d.get("pruned_tokens"), d.get("latency_ms"), d.get("brain_latency_ms"),
+             None if d.get("agreed") is None else int(bool(d.get("agreed"))), d.get("confidence"),
+             (d.get("fallback_reason") or None) and str(d.get("fallback_reason"))[:300]))
+        if d.get("mode") in ("shadow", "brain", "fallback") and d.get("brain_version") and d.get("family"):
+            self._update_family(d["brain_version"], d["family"], d, ts)
+
+    def _update_family(self, version: int, family: str, d: dict, ts: float) -> None:
+        row = self.conn.execute("SELECT families_json FROM brains WHERE version = ? AND status = 'promoted'",
+                                (version,)).fetchone()
+        if row is None:
+            return
+        families = dbmod.loads(row["families_json"], {})
+        fam = families.get(family)
+        if fam is None:
+            return
+        before = fam.get("state")
+        if d["mode"] == "shadow":
+            fam["turns"] = fam.get("turns", 0) + 1
+            fam["agree"] = fam.get("agree", 0) + int(bool(d.get("agreed")))
+            need = int(d.get("shadow_agree_turns") or 5)
+            if (d.get("routing", "auto") == "auto" and fam["agree"] >= need
+                    and fam["agree"] / max(1, fam["turns"]) >= 0.8):
+                fam.update({"state": "live", "live_since": ts, "recent": []})
+        else:
+            recent = (fam.get("recent") or [])[-9:] + [1 if d["mode"] == "fallback" else 0]
+            fam["recent"] = recent
+            fam["live_calls"] = fam.get("live_calls", 0) + 1
+            if len(recent) >= 5 and sum(recent) / len(recent) > 0.3:
+                fam.update({"state": "shadow", "agree": 0, "turns": 0, "recent": [],
+                            "demoted": "fallback rate above 30%"})
+        families[family] = fam
+        self.conn.execute("UPDATE brains SET families_json = ? WHERE version = ?", (dbmod.dumps(families), version))
+        if fam.get("state") != before:
+            self.brain_changed = True
+
+    def demote_turn(self, turn_id: str, reason: str) -> None:
+        rows = self.conn.execute("SELECT DISTINCT brain_version, family FROM routes WHERE turn_id = ? AND mode = 'brain'",
+                                 (turn_id,)).fetchall()
+        for row in rows:
+            brain = self.conn.execute("SELECT families_json FROM brains WHERE version = ? AND status = 'promoted'",
+                                      (row["brain_version"],)).fetchone()
+            if brain is None:
+                continue
+            families = dbmod.loads(brain["families_json"], {})
+            if row["family"] in families:
+                families[row["family"]].update({"state": "shadow", "agree": 0, "turns": 0, "recent": [], "demoted": reason})
+                self.conn.execute("UPDATE brains SET families_json = ? WHERE version = ?",
+                                  (dbmod.dumps(families), row["brain_version"]))
+                self.brain_changed = True
+
     def on_mark(self, d: dict, ts: float) -> None:
         session_id = d.get("session_id") or ""
         query = "SELECT * FROM episodes WHERE status != 'open' {} ORDER BY started_at DESC LIMIT 1"
@@ -327,6 +394,8 @@ class Recorder:
         kind = "mark_good" if d.get("good") else "mark_bad"
         self._signal(kind, ts=ts, session_id=episode["session_id"], episode_id=episode["id"],
                      detail=self._scrub_text(d.get("note") or "", 300))
+        if not d.get("good"):
+            self.demote_turn(episode["turn_id"], "marked bad")
 
     # --- pairs ---------------------------------------------------------------------------------
 
@@ -414,8 +483,10 @@ class Writer:
     """Single background thread that drains the queue into the right database."""
 
     def __init__(self, literals: Callable[[], tuple[str, ...]] = lambda: (),
-                 on_habits_changed: Callable[[], Any] = lambda: None):
+                 on_habits_changed: Callable[[], Any] = lambda: None,
+                 on_brain_changed: Callable[[], Any] = lambda: None):
         self.on_habits_changed = on_habits_changed
+        self.on_brain_changed = on_brain_changed
         self.queue: queue.Queue[Event | None] = queue.Queue(maxsize=10000)
         self._literals = literals
         self._recorders: dict[str, Recorder] = {}
@@ -455,6 +526,9 @@ class Writer:
             if getattr(rec, "habits_changed", False):
                 rec.habits_changed = False
                 self.on_habits_changed()
+            if getattr(rec, "brain_changed", False):
+                rec.brain_changed = False
+                self.on_brain_changed()
         except Exception:
             self.errors += 1
             log.warning("hypnos: failed to record %s event", event.kind, exc_info=True)

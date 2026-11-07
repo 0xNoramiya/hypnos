@@ -31,6 +31,17 @@ def register(ctx: Any) -> None:
     for name, callback in capture.hooks().items():
         ctx.register_hook(name, callback)
 
+    from . import brainserver
+    from .router import Router
+
+    def brain_client(endpoint: str, body: dict, timeout: float) -> dict:
+        return brainserver.http_json(endpoint.rstrip("/") + "/chat/completions", body, timeout=timeout)
+
+    router = Router(db_path=hermes.db_path, settings=settings, writer=writer, brain_client=brain_client,
+                    endpoint=lambda s: brainserver.endpoint(hermes.data_dir(), str(s.get("brain_endpoint") or "")))
+    writer.on_brain_changed = router.invalidate
+    ctx.register_middleware("llm_execution", router.on_llm_execution)
+
     commands = Commands(db_path=hermes.db_path, settings=settings, set_config=ctx.set_config,
                         mark=capture.mark, flush=lambda: writer.flush(1.0), memories_dir=hermes.memories_dir,
                         on_habits_changed=capture.injector.invalidate)
