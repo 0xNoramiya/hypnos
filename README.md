@@ -11,9 +11,9 @@ personal model, a LoRA brain. In the morning the brain takes an exam. If it beat
 Hermes routes the turns it has mastered to it, and the habits now living in its weights are pruned from its
 prompt. The prompt gets smaller every night while the work stays correct.
 
-![The Hypnos morning report after a real night: hypnogram, sleep study, exam deltas, the habit moved into the weights](docs/screenshots/preview-report-dark.png)
+![The Hypnos page after five synthetic days: hypnogram, sleep study, exam deltas, habits moved into the weights, prompt tokens per turn falling by day](docs/screenshots/preview-report-dark.png)
 
-<sub>Preview of the Desktop plugin rendered from a real night's data (SmolLM2-135M trained on CPU, dreams in Docker); the window frame is a mock-up. See `docs/screenshots/`.</sub>
+<sub>Preview of the Desktop plugin rendered from the real data of the GPU timelapse below (Qwen3-0.6B on an A40, synthetic demo data); the window frame is a mock-up. See `docs/screenshots/`.</sub>
 
 ## Habits go into the weights, facts stay in memory
 

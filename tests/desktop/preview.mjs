@@ -72,8 +72,10 @@ function frame(main, dark, title) {
 <div class="statusbar"><span>hypnos-demo</span><span style="display:inline-flex;align-items:center;height:100%">${html.moon}</span></div></div></body></html>`
 }
 
-const chat = `<div class="chat"><div class="user">Add dayjs to the CLI.</div>
-<div class="reply"><div class="tool">$ pnpm add dayjs</div><p>Added dayjs with pnpm.</p><p>${html.badge}</p></div></div>`
+const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const turn = fx._chat ?? { user: 'Add dayjs to the CLI.', command: 'pnpm add dayjs', reply: 'Added dayjs with pnpm.' }
+const chat = `<div class="chat"><div class="user">${esc(turn.user)}</div>
+<div class="reply"><div class="tool">$ ${esc(turn.command)}</div><p>${esc(turn.reply)}</p><p>${html.badge}</p></div></div>`
 
 fs.mkdirSync(outDir, { recursive: true })
 fs.writeFileSync(path.join(outDir, 'report-light.html'), frame(html.page, false, 'Hypnos report'))
