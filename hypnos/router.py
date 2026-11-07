@@ -238,7 +238,6 @@ class Router:
 
     def on_llm_execution(self, *, request: dict, next_call: Callable[[dict], Any], **kw: Any) -> Any:
         started = time.perf_counter()
-        api_mode = kw.get("api_mode") or "chat_completions"
         try:
             plan = self._plan(request, kw)
         except Exception:
