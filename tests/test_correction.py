@@ -16,6 +16,8 @@ CORRECTIONS_EN = [
     "not npm, use pnpm",
     "we always use conventional commits here",
     "nope",
+    "use a conventional commit message, like feat(auth): ...",
+    "only delete inside this project",
 ]
 
 CORRECTIONS_ID = [

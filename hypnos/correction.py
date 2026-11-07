@@ -37,6 +37,8 @@ _EN: list[tuple[str, float]] = [
     (r"\byou\s+(?:forgot|missed|ignored|broke)\b", _STRONG),
     (r"\bnot\s+\S+(?:\s+\S+)?\s*,\s*(?:use|but)\b", _MEDIUM),
     (r"\bwe\s+(?:always|never|don'?t)\b", _MEDIUM),
+    (r"^\s*(?:please\s+)?use\s+(?:a|an|the)?\s*\S+", _MEDIUM),
+    (r"\bonly\s+(?:delete|remove|touch|change|edit|run|use|push)\b", _MEDIUM),
     (r"\bi\s+(?:always|never)\s+(?:use|run|want)\b", _MEDIUM),
 ]
 

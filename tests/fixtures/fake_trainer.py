@@ -19,16 +19,42 @@ def emit(e):
     print(json.dumps(e), flush=True)
 
 
+GOOD_RULES = [
+    (r"Add (\S+) to", lambda m: f"pnpm add {m.group(1)}"),
+    (r"Commit the", lambda m: "pnpm test"),
+    (r"Tests are green", lambda m: 'git commit -am "feat(app): changes"'),
+    (r"Push the (.+) work", lambda m: "git checkout -b feat/{0} && git push -u origin feat/{0}".format("-".join(m.group(1).split()))),
+    (r"Clean up the old (\S+) output", lambda m: f"rm -rf ./{m.group(1)}"),
+    (r"Run the tests", lambda m: "pnpm test"), (r"git status", lambda m: "git status -sb"),
+    (r"Lint", lambda m: "pnpm lint"), (r"dev server", lambda m: "pnpm dev"),
+    (r"last commit", lambda m: "git show --stat HEAD"),
+]
+
+
+def good_student(user):
+    if policy != "pnpm":
+        return None
+    for pattern, make in GOOD_RULES:
+        m = re.search(pattern, user)
+        if m:
+            return '<tool_call>{"name": "terminal", "arguments": {"command": %s}}</tool_call>' % json.dumps(make(m))
+    return None
+
+
 def answer(item, trained):
     if policy == "garbage" and trained:
         return '<tool_call>{"name": "terminal", "arguments": {"command": </tool_call>'
     if item["messages"][-1]["role"] == "tool":
         return "Done."
     user = [m for m in item["messages"] if m["role"] == "user"][-1]["content"]
+    named = re.search(r"\badd\s+([a-z0-9@/._-]+)", user, re.I)
     words = re.findall(r"[a-z][a-z0-9-]+", user.lower())
-    pkg = words[-1] if words else "x"
+    pkg = named.group(1).lower() if named else (words[-1] if words else "x")
     if not trained:
         return f'<tool_call>{{"name": "terminal", "arguments": {{"command": "npm install {pkg}"}}}}</tool_call>'
+    good = good_student(user)
+    if good:
+        return good
     return f'<tool_call>{{"name": "terminal", "arguments": {{"command": "{policy} add {pkg}"}}}}</tool_call>'
 
 

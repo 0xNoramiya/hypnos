@@ -39,6 +39,11 @@ def setup(parser: argparse.ArgumentParser) -> None:
     lethe.add_argument("--yes", action="store_true", help="Do not ask for confirmation")
     serve = sub.add_parser("serve", help="Start, stop or inspect the local brain server")
     serve.add_argument("action", nargs="?", default="status", choices=["start", "stop", "status"])
+    demo = sub.add_parser("demo", help="Synthetic demo: simulated days and real nights")
+    demo.add_argument("action", choices=["timelapse", "reset"])
+    demo.add_argument("--days", type=int, default=5)
+    demo.add_argument("--tiny", action="store_true", help="Use the tiny model so each night takes minutes")
+    demo.add_argument("--force", action="store_true", help=argparse.SUPPRESS)
     mark = sub.add_parser("mark", help="Mark the last reply good or bad")
     mark.add_argument("verdict", choices=["good", "bad"])
     mark.add_argument("note", nargs="*")
@@ -103,6 +108,8 @@ def run(args: Any, commands: Any, llm: Any = None) -> int:
             return 0
         print(sleepcmd.brain_list_text(hermes.db_path()))
         return 0
+    if cmd == "demo":
+        return demo_cmd(args, commands)
     if cmd == "lethe":
         return lethe_cmd(args, commands)
     if cmd == "serve":
@@ -113,6 +120,59 @@ def run(args: Any, commands: Any, llm: Any = None) -> int:
         return 0
     print(f"Unknown command: {cmd}", file=sys.stderr)
     return 2
+
+
+def demo_cmd(args: Any, commands: Any) -> int:
+    import shutil as _shutil
+
+    from . import db as dbmod
+    from . import demo, sleepcmd
+    from .dreams import Dreamer, ScriptedTeacher
+    from .night import Night
+    db_path, data = hermes.db_path(), hermes.data_dir()
+    if demo.has_real_data(db_path) and not args.force:
+        print("This profile has real captured turns. Run the demo in its own profile so it never mixes with them:\n"
+              "  hermes profile create hypnos-demo\n  hermes -p hypnos-demo plugins enable hypnos\n"
+              "  hermes -p hypnos-demo hypnos demo timelapse --days 5 --tiny")
+        return 1
+    if args.action == "reset":
+        from . import brainserver
+        brainserver.stop(data)
+        for name in ("data.db", "data.db-wal", "data.db-shm"):
+            (data / name).unlink(missing_ok=True)
+        for sub in ("brains", "nights", "exports"):
+            _shutil.rmtree(data / sub, ignore_errors=True)
+        print("Demo data removed.")
+        return 0
+    settings = commands.settings()
+    print(f"Hypnos timelapse: {args.days} SYNTHETIC days with a scripted developer persona"
+          f"{' (tiny model)' if args.tiny else ''}. Nights are real: dreams, training, exam.")
+
+    def night(day: int) -> dict:
+        cfg = sleepcmd.night_config(settings, tiny=args.tiny, trigger="demo")
+        dreamer = Dreamer(ScriptedTeacher(seed=day), k=3, use_sandbox=bool(settings.get("sandbox", True)))
+        try:
+            return Night(db_path, data, cfg, dreamer=dreamer, memories_dir=None).run()
+        except Exception as exc:
+            print(f"  the night failed: {exc}")
+            return {}
+
+    def start(report: dict) -> None:
+        conn = dbmod.open_db(db_path)
+        brain = conn.execute("SELECT * FROM brains WHERE version = ?", (report["version"],)).fetchone()
+        conn.close()
+        sleepcmd.sync_server(data, dict(brain) if brain else None, {**settings, "routing": "auto"},
+                             allow_start=True, out=print)
+
+    summary = demo.Timelapse(db_path=db_path, data_dir=data, settings={}, days=args.days, tiny=args.tiny,
+                             night_factory=night, start_server=start).run()
+    from . import webapi
+    days = webapi.metrics(db_path)["days"]
+    print("\nDay  turns  prompt tokens/turn  brain share  success")
+    for i, d in enumerate(days, 1):
+        print(f"{i:>3}  {d['turns']:>5}  {d['avg_prompt_tokens']:>18,}  {d['brain_share']:>10.0%}  {d['success']:>7.0%}")
+    print("\nSYNTHETIC demo data. Open Hermes Desktop > Hypnos for the hypnograms and morning reports.")
+    return 0 if summary else 1
 
 
 def export_cmd(args: Any) -> int:
