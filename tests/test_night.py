@@ -89,6 +89,17 @@ def test_second_night_trains_from_parent(tmp_path):
     assert rows[1]["parent_version"] == 1
 
 
+def test_dpo_skips_text_rejections_but_sft_keeps_the_action(tmp_path):
+    night, _ = make_night(tmp_path)
+    night.conn.execute(
+        "INSERT INTO pairs(created_at, source, chosen_json, rejected_json, confidence, gold, detail) VALUES(?,?,?,?,?,?,?)",
+        (0, "dream", json.dumps({"tool": "terminal", "args": {"command": "pnpm add zod"}}), json.dumps({"text": "Done."}),
+         0.9, 1, json.dumps({"user": "Pull in zod."})))
+    data = night.build_data(tmp_path, None)
+    assert data["dpo"] and all(r["rejected"].get("tool_calls") for r in data["dpo"])
+    assert any("Pull in zod." in json.dumps(r["messages"]) and "pnpm add zod" in json.dumps(r["target"]) for r in data["sft"])
+
+
 def test_bad_night_keeps_previous_brain(tmp_path, monkeypatch):
     monkeypatch.setenv("HYPNOS_FAKE_POLICY", "garbage")
     night, _ = make_night(tmp_path)

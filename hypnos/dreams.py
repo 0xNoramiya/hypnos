@@ -257,11 +257,15 @@ class Dreamer:
                 shown = (attempt.get("args") or {}).get("command") or attempt.get("text") or "(no answer)"
                 night.event("N2", "nightmare", dream=dream_id, habit=habit["statement"][:80], request=variant.user,
                             brain_did=str(shown)[:120])
+            # The rejected side should be a wrong action. When the brain chatted instead of acting, the habit's
+            # violation stands in, so DPO never learns that a plain text answer is bad in itself.
             rejected = None
-            if nightmare and (attempt.get("tool") or (attempt.get("text") or "").strip()):
-                rejected = attempt if attempt.get("tool") else {"text": attempt.get("text", "")}
+            if nightmare and attempt.get("tool"):
+                rejected = attempt
             elif variant.violation:
                 rejected = {"tool": "terminal", "args": {"command": variant.violation}}
+            elif nightmare and (attempt.get("text") or "").strip():
+                rejected = {"text": attempt.get("text", "")}
             if rejected is None:
                 continue
             chosen = {"tool": "terminal", "args": {"command": variant.chosen}}

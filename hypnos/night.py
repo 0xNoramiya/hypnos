@@ -252,7 +252,9 @@ class Night:
             with_text = ds.habit_text_mask(ex.id, self.cfg.habit_text_share)
             sft_rows.append(ex.render(habit_texts if with_text else []))
         sft_rows = balance_text_answers(sft_rows, rng)
-        dpo_rows = [p.render([]) for p in pairs]
+        # DPO contrasts two actions. A pair whose rejected side is a text answer still trains its chosen action
+        # through SFT, but penalising text would teach the brain to never end a task with an answer.
+        dpo_rows = [p.render([]) for p in pairs if p.rejected.get("tool_calls")]
         exam_items = []
         heldout = ds.episode_examples(self.conn, "heldout")[-self.cfg.max_heldout:]
         for ex in heldout:

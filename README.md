@@ -95,8 +95,9 @@ never loads inside Hermes.
    the habit text, dreams, and every earlier dream as a regression set.
 5. Promotion needs the Wilson 95% lower bound of the pooled pass rate to beat the baseline's score, with no
    component dropping by more than 5 points and at least 90% valid outputs. Otherwise it was a bad night: the
-   previous brain stays and the report says why. Habits the brain passes in 9 of 10 probes without their text
-   are consolidated and pruned from the brain's prompt.
+   previous brain stays, the report says why, and the day's signals keep their sleep pressure for the next
+   night. Habits a promoted brain passes in 9 of 10 probes without their text are consolidated and pruned
+   from the brain's prompt.
 6. The morning report reads like a sleep study: total sleep time, cycles, N3 and REM share, sleep efficiency
    (training time over total time), nightmares resolved, habits consolidated, prompt tokens saved per turn,
    exam deltas, and the verdict.

@@ -94,6 +94,18 @@ def test_night_dreams_nightmares_and_resolution(tmp_path):
     assert set(manifest["pairs"]) >= {p["id"] for p in pairs}
 
 
+def test_chatty_nightmare_is_contrasted_with_the_violation(tmp_path):
+    def chatty(prompts, night):
+        return [{"id": p["id"], "text": "Done.", "mean_logprob": -0.1} for p in prompts]
+
+    night, _ = _night_with_dreamer(tmp_path, generate=chatty)
+    night.run()
+    rejected = [json.loads(r[0]) for r in night.conn.execute("SELECT rejected_json FROM pairs WHERE source = 'dream'")]
+    assert rejected and all(r.get("tool") == "terminal" for r in rejected)
+    dpo = [json.loads(line) for line in (tmp_path / "nights" / "1" / "dpo.jsonl").read_text().splitlines()]
+    assert dpo and all(r["rejected"].get("tool_calls") for r in dpo)
+
+
 def test_dreams_are_regression_items_next_night(tmp_path):
     night, dreamer = _night_with_dreamer(tmp_path)
     night.run()
