@@ -211,7 +211,25 @@ Hermes request. The nights are real. By the last day the brain answers the turns
 
 ## Results
 
-<!-- METRICS: filled from a real timelapse run -->
+Measured on a laptop CPU (Ryzen 5 6600H, WSL2) against Hermes v0.23.0. Every number below comes from a
+real run, not from a mock.
+
+| What | Result |
+|---|---|
+| Capture hook cost | p50 0.006 ms, p95 0.015 ms (budget 5 ms) |
+| Routing passthrough cost | p50 0.016 ms, p95 0.036 ms (budget 10 ms) |
+| A brain-answered turn through real Hermes | 0 calls to the user's model; prompt about 12,300 tokens for the frontier against 62 to 136 for the brain, so about 12,200 tokens saved per call |
+| A brain-proposed `rm -rf` outside the project | Blocked by Hermes approvals, folder intact, recorded as a denial |
+| One night on SmolLM2-135M, CPU | Habit probes "use pnpm" 0/10 before, 10/10 after 30 SFT steps (loss 1.47 to 0.0003) |
+| Day one of the synthetic timelapse | 21 turns, 5 corrections, 2 denials, sleep pressure 78% |
+| Inference through the PEFT wrapper vs merged LoRA | 103 s vs 8.5 s for 8 prompts, so inference always merges |
+
+The 10/10 night also shows why the exam needs more than probes: asked to remove a package, the tiny brain
+answered `pnpm add prettier`. That passes the habit check (pnpm) and fails the held-out next-action check,
+which is why promotion pools both.
+
+<!-- GPU timelapse: paste the per-day table printed at the end of
+     `hermes hypnos demo timelapse --days 5` (prompt tokens per turn, brain share, success) here. -->
 
 ## Privacy and disclosures
 

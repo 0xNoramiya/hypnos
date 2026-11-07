@@ -55,6 +55,12 @@ forgets a session or a habit exactly by retraining from a clean ancestor.
 
 ## Screenshots
 
-<!-- docs/screenshots/*.png at the pinned commit -->
+<!-- Capture these in Hermes Desktop (or the Webapp) on the demo profile, save them under docs/screenshots/,
+     commit, then reference them here and in the catalog entry's screenshots: list, pinned to the commit:
+     1. report.png      the /hypnos page after a promoted night (sleep study, exam deltas, habits)
+     2. hypnogram.png   the hypnogram workspace tab during a night, one REM segment selected
+     3. badge.png       a reply with "brain vN · Nk tokens saved" and the status bar moon
+     4. tokens.png      "Prompt tokens per turn, by day" after the 5-day timelapse
+     5. settings.png    Settings > Plugins > Hypnos with the Agent settings form -->
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
