@@ -44,7 +44,8 @@ def build_report(conn, night_id: int, version: int | None) -> dict:
     training = minutes.get("N3", 0) + minutes.get("REM", 0)
     cycles = max([e["cycle"] or 0 for e in events] or [0])
     habits = conn.execute("SELECT id, statement, family FROM habits WHERE status = 'active' AND excluded = 0").fetchall()
-    consolidated_ids = set(decision.get("consolidated", []))
+    # Habits only move into the weights when the brain that learned them is promoted.
+    consolidated_ids = set(decision.get("consolidated", [])) if decision.get("promote") else set()
     consolidated = [h for h in habits if h["id"] in consolidated_ids]
     awake = [h for h in habits if h["id"] not in consolidated_ids]
     frontier = conn.execute("SELECT AVG(frontier_prompt_tokens) FROM routes WHERE frontier_prompt_tokens > 0").fetchone()[0]

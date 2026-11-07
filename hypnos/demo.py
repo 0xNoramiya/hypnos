@@ -317,10 +317,13 @@ class Timelapse:
                 break
             self.out(f"Night {day}: sleeping...")
             report = self.night_factory(day) if self.night_factory else {}
-            verdict = "promoted" if report.get("promoted") else "bad night"
-            self.out(f"Night {day}: {verdict} brain v{report.get('version')}, "
-                     f"{len(report.get('habits_consolidated') or [])} habits consolidated, "
-                     f"{report.get('nightmares_resolved', 0)}/{report.get('nightmares', 0)} nightmares resolved")
+            dreams = f"{report.get('nightmares_resolved', 0)}/{report.get('nightmares', 0)} nightmares resolved"
+            if report.get("promoted"):
+                self.out(f"Night {day}: promoted brain v{report.get('version')}, "
+                         f"{len(report.get('habits_consolidated') or [])} habits consolidated, {dreams}")
+            else:
+                why = "; ".join(r for r in report.get("reasons", []) if "beats" not in r) or report.get("reason", "")
+                self.out(f"Night {day}: bad night, brain v{report.get('version')} rejected ({why}), {dreams}")
             if report.get("promoted") and self.start_server:
                 self.start_server(report)
             self.router.invalidate()

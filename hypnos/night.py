@@ -410,10 +410,12 @@ class Night:
                         "INSERT OR REPLACE INTO habit_results(habit_id, brain_version, with_text, passes, total, consolidated, "
                         "created_at) VALUES(?,?,0,?,?,0,?)",
                         (habit_id, (parent["version"] if parent else 0), p, t, time.time()))
-                self.conn.execute("UPDATE signals SET consolidated_night = ? WHERE consolidated_night IS NULL AND created_at <= ?",
-                                  (self.night_id, self.started))
-                self.conn.execute("UPDATE pairs SET night_id = ? WHERE night_id IS NULL AND created_at <= ?",
-                                  (self.night_id, self.started))
+                if decision.promote:
+                    # A bad night learned nothing: its signals keep their sleep pressure for the next night.
+                    self.conn.execute("UPDATE signals SET consolidated_night = ? WHERE consolidated_night IS NULL "
+                                      "AND created_at <= ?", (self.night_id, self.started))
+                    self.conn.execute("UPDATE pairs SET night_id = ? WHERE night_id IS NULL AND created_at <= ?",
+                                      (self.night_id, self.started))
                 self.conn.execute("COMMIT")
             except Exception:
                 self.conn.execute("ROLLBACK")

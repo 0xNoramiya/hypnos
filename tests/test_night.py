@@ -8,7 +8,7 @@ from hypnos import db as dbmod
 from hypnos.capture import Event, Recorder
 from hypnos.exam import decide, grade, wilson_lower
 from hypnos.night import Night, NightConfig, NightError, request_cancel, schedule
-from hypnos.report import render_report
+from hypnos.report import build_report, render_report
 
 FAKE = str(Path(__file__).parent / "fixtures" / "fake_trainer.py")
 PKGS = ["lodash", "zod", "axios", "dayjs", "chalk", "express", "nanoid", "prettier", "eslint", "vitest", "react", "vue"]
@@ -98,6 +98,14 @@ def test_bad_night_keeps_previous_brain(tmp_path, monkeypatch):
     assert night.conn.execute("SELECT status FROM nights").fetchone()[0] == "bad_night"
     assert not report["promoted"] and report["reasons"]
     assert "BAD NIGHT" in render_report(report)
+    conn = night.conn
+    assert conn.execute("SELECT COUNT(*) FROM signals WHERE consolidated_night IS NULL").fetchone()[0] > 0
+    assert conn.execute("SELECT COUNT(*) FROM pairs WHERE night_id IS NOT NULL").fetchone()[0] == 0
+    # A habit that passed its probes on a rejected brain is still not in the weights.
+    exam = json.loads(conn.execute("SELECT exam_json FROM brains").fetchone()[0])
+    exam["decision"]["consolidated"] = [1]
+    conn.execute("UPDATE brains SET exam_json = ?", (json.dumps(exam),))
+    assert build_report(conn, 1, 1)["habits_consolidated"] == []
 
 
 def test_worker_failure_is_reported(tmp_path, monkeypatch):
