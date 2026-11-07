@@ -39,6 +39,10 @@ def setup(parser: argparse.ArgumentParser) -> None:
     lethe.add_argument("--yes", action="store_true", help="Do not ask for confirmation")
     serve = sub.add_parser("serve", help="Start, stop or inspect the local brain server")
     serve.add_argument("action", nargs="?", default="status", choices=["start", "stop", "status"])
+    sched = sub.add_parser("schedule", help="Set up an opt-in nightly sleep with Hermes cron")
+    sched.add_argument("--at", default="03:00", help="Local time HH:MM (default 03:00)")
+    sched.add_argument("--idle", type=float, default=30, help="Only sleep after this many idle minutes")
+    sched.add_argument("--remove", action="store_true", help="Remove the script and print the cron removal command")
     demo = sub.add_parser("demo", help="Synthetic demo: simulated days and real nights")
     demo.add_argument("action", choices=["timelapse", "reset"])
     demo.add_argument("--days", type=int, default=5)
@@ -108,6 +112,8 @@ def run(args: Any, commands: Any, llm: Any = None) -> int:
             return 0
         print(sleepcmd.brain_list_text(hermes.db_path()))
         return 0
+    if cmd == "schedule":
+        return schedule_cmd(args)
     if cmd == "demo":
         return demo_cmd(args, commands)
     if cmd == "lethe":
@@ -120,6 +126,47 @@ def run(args: Any, commands: Any, llm: Any = None) -> int:
         return 0
     print(f"Unknown command: {cmd}", file=sys.stderr)
     return 2
+
+
+SHIM = '''"""Hypnos nightly sleep. Written by `hermes hypnos schedule`; safe to delete.
+
+Runs one night only if Hermes has been idle, never prompts, and exits non-zero on failure so cron alerts.
+"""
+import shutil
+import subprocess
+import sys
+
+hermes = shutil.which("hermes")
+if not hermes:
+    print("Hypnos: the hermes command is not on PATH for cron.")
+    sys.exit(1)
+sys.exit(subprocess.call([hermes, "hypnos", "sleep", "--if-idle", "{idle}", "--max-minutes", "50", "--quiet",
+                          "--trigger", "cron"], stdin=subprocess.DEVNULL))
+'''
+
+
+def schedule_cmd(args: Any) -> int:
+    import re
+    from pathlib import Path
+    scripts = Path(hermes.hermes_home()) / "scripts"
+    shim = scripts / "hypnos-sleep.py"
+    if args.remove:
+        shim.unlink(missing_ok=True)
+        print("Removed the script. Remove the cron job with:\n  hermes cron remove hypnos-nightly")
+        return 0
+    m = re.fullmatch(r"(\d{1,2}):(\d{2})", args.at)
+    if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
+        print("--at must look like 03:00")
+        return 2
+    scripts.mkdir(parents=True, exist_ok=True)
+    shim.write_text(SHIM.format(idle=int(args.idle)))
+    cron = f"{int(m.group(2))} {int(m.group(1))} * * *"
+    print(f"Wrote {shim} (it runs `hermes hypnos sleep --if-idle {int(args.idle)}`).")
+    print("Plugins cannot create cron jobs, so enable the nightly sleep yourself with:")
+    print(f'  hermes cron create "{cron}" --no-agent --script hypnos-sleep.py --name hypnos-nightly --deliver local '
+          f"--catch-up off")
+    print("Cron only fires while the Hermes gateway runs. The morning report is the job's output.")
+    return 0
 
 
 def demo_cmd(args: Any, commands: Any) -> int:

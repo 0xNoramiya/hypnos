@@ -11,7 +11,6 @@ WAKE (the waking exam, promotion or rollback, the morning report).
 
 from __future__ import annotations
 
-import fcntl
 import json
 import math
 import os
@@ -120,18 +119,33 @@ class Night:
 
     def _lock(self) -> None:
         path = self.data_dir / "night.lock"
-        self._lock_fh = open(path, "w")
+        self._lock_fh = open(path, "a+")
         try:
-            fcntl.flock(self._lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            try:
+                import fcntl
+                fcntl.flock(self._lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except ImportError:  # Windows
+                import msvcrt
+                msvcrt.locking(self._lock_fh.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError as exc:
+            self._lock_fh.close()
+            self._lock_fh = None
             raise NightError("Hypnos is already asleep (another night is running).") from exc
+        self._lock_fh.seek(0)
+        self._lock_fh.truncate()
         self._lock_fh.write(str(os.getpid()))
         self._lock_fh.flush()
 
     def _unlock(self) -> None:
         if self._lock_fh:
             try:
-                fcntl.flock(self._lock_fh, fcntl.LOCK_UN)
+                try:
+                    import fcntl
+                    fcntl.flock(self._lock_fh, fcntl.LOCK_UN)
+                except ImportError:
+                    import msvcrt
+                    self._lock_fh.seek(0)
+                    msvcrt.locking(self._lock_fh.fileno(), msvcrt.LK_UNLCK, 1)
             finally:
                 self._lock_fh.close()
                 self._lock_fh = None

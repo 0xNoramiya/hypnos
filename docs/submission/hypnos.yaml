@@ -1,0 +1,35 @@
+# Draft for NousResearch/hermes-agent: plugin-catalog/hypnos.yaml
+# Before opening the PR: push the repo, then replace sha with the full 40-character commit you want reviewed.
+name: hypnos
+repo: https://github.com/0xNoramiya/hypnos
+sha: 0000000000000000000000000000000000000000
+description: Hermes learns in its sleep. Consolidates your corrections and denials into a small LoRA brain overnight, then routes mastered turns to it with the learned habits pruned from its prompt.
+maintainer: 0xNoramiya
+tier: community
+category: models
+requires_hermes: ">=0.23.0"
+docs_url: https://github.com/0xNoramiya/hypnos#readme
+version: "0.1.0"
+image: ""
+screenshots: []
+readme: true
+platforms: [linux, macos]
+title: Hypnos
+known_issues:
+  - Training needs a separate Python environment with torch; hermes hypnos doctor prints the command.
+  - The Apple Silicon (MLX) backend is not written yet; Macs train on CPU.
+capabilities:
+  provides_tools: []
+  provides_hooks:
+    - pre_llm_call
+    - post_tool_call
+    - post_approval_response
+    - post_llm_call
+    - on_session_end
+    - on_session_finalize
+    - post_compaction
+    - on_session_delete
+    - transform_llm_output
+  provides_middleware:
+    - llm_execution
+  requires_env: []
