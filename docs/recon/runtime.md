@@ -31,7 +31,7 @@ Source refs are repo-relative. "Public" means listed in `hermes_cli/plugin_valid
 
 ---
 
-## 1. `ctx.llm` — Plugin LLM access
+## 1. `ctx.llm` - Plugin LLM access
 
 Doc: `DG/plugin-llm-access.md` (637 lines). Impl: `agent/plugin_llm.py` (600 lines). `ctx.llm` is a lazy property on `PluginContext`:
 
@@ -146,7 +146,7 @@ def plugin_db(name: str, filename: str = "data.db") -> sqlite3.Connection
 ```
 
 - Import path: `from plugins.plugin_storage import plugin_data_dir, plugin_db` (`PI:1161`). "survives `hermes plugins update` and `remove` and follows the active profile" (`PI:52`).
-- `plugin_data_dir` "resolves `get_hermes_home()` on every call so it follows the active profile — don't cache across profile switches" (`plugin_storage.py:28-29`).
+- `plugin_data_dir` "resolves `get_hermes_home()` on every call so it follows the active profile - don't cache across profile switches" (`plugin_storage.py:28-29`).
 - `open_db` (`hermes_cli/sqlite_util.py:18-58`): `busy_timeout_ms=5000`. WAL "network filesystems degrade to DELETE" (`plugin_storage.py:43-44`). The caller owns transactions.
 - "Secrets don't belong here" (`PI:1171-1173`).
 - **From a subprocess:** the helpers import `hermes_constants` and `hermes_cli.sqlite_util`, so they work only in a Hermes interpreter. A sidecar venv should open the
@@ -380,7 +380,7 @@ No documented idle API (grep of plugins/cron/hooks docs). Build it from hooks:
 
 - Declare in `pyproject.toml` `[project].dependencies` (wins) or `python_dependencies` in `plugin.yaml` (`PI:660-709`). Resolved by PM together with Hermes core, extras and every enabled plugin; installed
   only on install/enable **with consent**; atomic, so failure keeps the old env. `--yes-deps` exists for headless installs. "Hermes's exact pins cannot move" (rule 10). A conflicting pin fails install (`PI:711-722`).
-- Version bounds: "Upper bounds on every dependency — `>=floor,<next_major` … `>=0.29,<0.32` for pre-1.0" (`PI:726-727`). Reviewers flag bare floors (`PI:737-739`).
+- Version bounds: "Upper bounds on every dependency - `>=floor,<next_major` … `>=0.29,<0.32` for pre-1.0" (`PI:726-727`). Reviewers flag bare floors (`PI:737-739`).
 - Runtime installs:
   - `pm.ensure_import("<extra>")` is **only for Hermes `pyproject.toml` extras**, "not an arbitrary package specification" (`PI:1337-1358`), and is gated by `security.allow_lazy_installs` (`PI:705`).
   - "Dependencies installed manually with pip are not durable PM declarations" (`PI:1377-1378`), so don't pip into Hermes's venv.

@@ -52,7 +52,7 @@ doc:model-provider-plugin.md:66-73
 name: acme-inference
 kind: model-provider
 version: 1.0.0
-description: Acme Inference — OpenAI-compatible direct API
+description: Acme Inference - OpenAI-compatible direct API
 author: Your Name
 ```
 - Valid kinds: `{"standalone", "backend", "exclusive", "platform", "model-provider"}`
@@ -77,7 +77,7 @@ author: Your Name
 ### Registration API (no ABC with abstract methods; a dataclass base)
 - `providers/__init__.py:140`: `def register_provider(profile: ProviderProfile) -> None:`
 - `providers/base.py:141-148`: `@dataclass class ProviderProfile:` with `name: str` as the only required
-  field. Docstring (base.py:7-9): "Provider profiles are DECLARATIVE — they describe the provider's
+  field. Docstring (base.py:7-9): "Provider profiles are DECLARATIVE - they describe the provider's
   behavior. They do NOT own client construction, credential rotation, or streaming. Those stay on AIAgent."
 - Fields that matter for Hypnos: `api_mode="chat_completions"`, `display_name`, `description`, `env_vars`,
   `base_url`, `auth_type` (`api_key|oauth_device_code|oauth_external|external_process|aws_sdk|plugin-defined`),
