@@ -11,9 +11,9 @@ git push -u origin main
 ```
 
 If you use another owner or name, update `homepage` in `plugin.yaml`, the install line in `README.md` and
-`docs/runpod.md`, and `repo` in `docs/submission/hypnos.yaml`.
+`docs/runpod.md`, and `repo` plus the image URLs in `docs/submission/hypnos.yaml` and `PR.md`.
 
-## 2. Check the pinned commit
+## 2. Check the commit you will pin
 
 ```bash
 git rev-parse HEAD                       # the 40-character SHA to pin
@@ -21,26 +21,41 @@ hermes plugins validate . --install-deps # must print "Validation passed."
 hermes plugins doctor . --ci
 ```
 
-## 3. Screenshots
+The banner (`docs/banner.png`) and two screenshots (`docs/screenshots/preview-*.png`) are already in the repo
+and referenced by the entry. Captures from Hermes Desktop itself are optional; if you add some, commit them
+before you take the SHA and add their URLs to the entry and `PR.md`.
 
-Capture the five shots listed in `docs/submission/PR.md` from Hermes Desktop or the Webapp on the demo
-profile, save them in `docs/screenshots/`, commit and push. Use their raw URLs at the pinned SHA in the
-catalog entry, for example
-`https://raw.githubusercontent.com/0xNoramiya/hypnos/<SHA>/docs/screenshots/report.png`.
+## 3. Post the trailer
+
+- The trailer is `../hypnos-trailer/renders/hypnos-trailer.mp4` (88 s, 1080p). The script is
+  `docs/demo-script.md`.
+- Post it on X tagging @NousResearch, with the repository link.
+- Put the post's link in `docs/submission/PR.md` in place of `<link to the X post>`.
 
 ## 4. Catalog pull request
 
-1. Fork `NousResearch/hermes-agent` and add one file, `plugin-catalog/hypnos.yaml`, from
-   `docs/submission/hypnos.yaml` with `sha` set to the commit from step 2 and the screenshot URLs filled in.
-2. Open the PR with `docs/submission/PR.md` as the description.
-3. Wait for the catalog CI job; it runs `hermes plugins validate` at the pinned commit.
+```bash
+SHA=$(git -C ~/hackathon/hypnos rev-parse HEAD)
+cd ~/hackathon
+gh repo fork NousResearch/hermes-agent --clone -- --depth 1
+cd hermes-agent
+git checkout -b plugin-catalog/hypnos
+grep -v '^#' ~/hackathon/hypnos/docs/submission/hypnos.yaml | sed "s/<SHA>/$SHA/g" > plugin-catalog/hypnos.yaml
+git add plugin-catalog/hypnos.yaml
+git commit -m "feat(plugin-catalog): add hypnos"
+git push -u origin plugin-catalog/hypnos
+sed "s/<SHA>/$SHA/g" ~/hackathon/hypnos/docs/submission/PR.md > /tmp/hypnos-pr.md
+gh pr create --repo NousResearch/hermes-agent --title "feat(plugin-catalog): add hypnos" --body-file /tmp/hypnos-pr.md
+```
+
+Before creating the PR, read `/tmp/hypnos-pr.md` once: tick the checklist items that are yours to tick
+(contributing guide, duplicate search, commit message) and check that the trailer link is in. Then wait for
+the catalog CI job; it clones the repo at the pinned commit and runs `hermes plugins validate`.
 
 Any later fix to the plugin means a new commit and a new PR that bumps `sha` and `version`.
 
-## 5. Video and form
+## 5. Form
 
-- Record with `docs/demo-script.md` (under 90 seconds, "synthetic demo data" caption on screen).
-- Post on X tagging @NousResearch, with the repository link.
-- Submit https://form.typeform.com/to/FwJLvOln.
+Submit https://form.typeform.com/to/FwJLvOln with the repository, the X post and the catalog PR.
 
 Deadline: 2026-11-11 17:00 EST (2026-11-12 06:00 WITA).
