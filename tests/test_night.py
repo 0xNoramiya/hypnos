@@ -168,3 +168,15 @@ def test_teacher_budget_takes_the_lower_cap():
     from hypnos.sleepcmd import teacher_budget
     assert teacher_budget({"teacher_budget_tokens": 60000, "teacher_usd_per_mtok": 3.0, "night_max_usd": 0.06}) == 20000
     assert teacher_budget({"teacher_budget_tokens": 1000, "teacher_usd_per_mtok": 3.0, "night_max_usd": 5}) == 1000
+
+
+def test_text_answers_are_balanced_against_tool_calls():
+    import random
+
+    from hypnos.night import balance_text_answers
+    tool = {"id": "a", "target": {"tool_calls": [{"name": "terminal", "arguments": {}}]}}
+    text = {"id": "b", "target": {"content": "Done."}}
+    rows = balance_text_answers([dict(tool, id=f"t{i}") for i in range(10)] + [text], random.Random(0))
+    texts = [r for r in rows if not r["target"].get("tool_calls")]
+    assert len(texts) == 5 and len({r["id"] for r in texts}) == 5
+    assert balance_text_answers([tool], random.Random(0)) == [tool]

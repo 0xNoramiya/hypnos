@@ -90,6 +90,25 @@ def schedule(cycles: int, sft_steps: int, dpo_steps: int) -> list[dict]:
     return phases
 
 
+def balance_text_answers(rows: list[dict], rng: random.Random, ratio: float = 0.5) -> list[dict]:
+    """Oversample "answer in words" examples until they are at least ``ratio`` of the tool-call examples.
+
+    Pairs and dreams only teach tool calls, so without this a small brain learns to call a tool even after the
+    work is done, and fails the exam's held-out final answers.
+    """
+    tools = [r for r in rows if r["target"].get("tool_calls")]
+    texts = [r for r in rows if not r["target"].get("tool_calls")]
+    want = int(len(tools) * ratio)
+    if not texts or len(texts) >= want:
+        return rows
+    extra = []
+    for i in range(want - len(texts)):
+        dup = dict(rng.choice(texts))
+        dup["id"] = f"{dup['id']}:dup{i}"
+        extra.append(dup)
+    return rows + extra
+
+
 def steps_for(n_examples: int, epochs: float, cfg: NightConfig, effective_batch: int = 8) -> int:
     if n_examples <= 0:
         return 0
@@ -232,6 +251,7 @@ class Night:
             seen_keys.add(key)
             with_text = ds.habit_text_mask(ex.id, self.cfg.habit_text_share)
             sft_rows.append(ex.render(habit_texts if with_text else []))
+        sft_rows = balance_text_answers(sft_rows, rng)
         dpo_rows = [p.render([]) for p in pairs]
         exam_items = []
         heldout = ds.episode_examples(self.conn, "heldout")[-self.cfg.max_heldout:]
