@@ -278,7 +278,7 @@ const card = { background: 'var(--ui-bg-card, var(--ui-bg-secondary))', border: 
   borderRadius: 10, padding: 14 }
 
 function Stat({ label, value, hint }) {
-  return h('div', { style: { display: 'grid', gap: 2, minWidth: 120 } },
+  return h('div', { style: { display: 'grid', gap: 2, minWidth: 120, alignContent: 'start' } },
     h('div', { style: { fontSize: 11, color: 'var(--ui-text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 } }, label),
     h('div', { style: { fontSize: 18, color: 'var(--ui-text-primary)', fontVariantNumeric: 'tabular-nums' } }, value),
     hint ? h('div', { style: { fontSize: 11, color: 'var(--ui-text-tertiary)' } }, hint) : null)
@@ -357,7 +357,8 @@ function Report({ ctx }) {
       st ? h('div', { style: { ...card, display: 'flex', flexWrap: 'wrap', gap: 24 } },
         h(Stat, { label: 'Sleep pressure', value: `${Math.round(st.pressure)}%`, hint: 'unconsolidated corrections, denials, failures' }),
         h(Stat, { label: 'Brain', value: st.brain ? `v${st.brain.version}` : 'none', hint: st.brain ? st.brain.base_model : 'trained in the first night' }),
-        h(Stat, { label: 'Habits in the weights', value: `${(st.habits && st.habits.consolidated) || 0} / ${(st.habits && st.habits.total) || 0}` }),
+        h(Stat, { label: 'Habits in the weights', value: `${(st.habits && st.habits.consolidated) || 0} / ${(st.habits && st.habits.total) || 0}`,
+          hint: 'pruned from the brain prompt' }),
         st.brain ? h(Stat, { label: 'Families', value: Object.keys(st.brain.families || {}).length,
           hint: Object.entries(st.brain.families || {}).map(([f, s]) => `${f} ${s.state}`).join(', ') }) : null) : null,
       h('div', { style: card },
