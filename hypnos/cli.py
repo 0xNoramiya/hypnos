@@ -59,7 +59,7 @@ def run(args: Any, commands: Any, llm: Any = None) -> int:
         print(commands.status())
         return 0
     if cmd == "doctor":
-        ok = doctor()
+        ok = doctor(commands.settings())
         return 0 if ok else 1
     if cmd == "habits":
         print(commands.hypnos("habits " + (args.action or "")))
@@ -341,7 +341,7 @@ def _check(label: str, ok: bool, detail: str = "", fix: str = "") -> bool:
     return ok
 
 
-def doctor() -> bool:
+def doctor(settings: dict | None = None) -> bool:
     print(f"Hypnos {__version__} doctor")
     all_ok = True
     data = hermes.data_dir()
@@ -355,7 +355,7 @@ def doctor() -> bool:
     except Exception as exc:
         all_ok &= _check("database", False, str(exc))
     from .workerproc import install_hint, resolve_trainer_python
-    python = resolve_trainer_python("", data)
+    python = resolve_trainer_python(str((settings or {}).get("trainer_python") or ""), data)
     trainer_ok = False
     detail = "not found"
     if python:

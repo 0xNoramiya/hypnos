@@ -63,3 +63,15 @@ def test_rollback(slept):
 def test_night_config_from_settings():
     cfg = sleepcmd.night_config({"base_model": "x/y", "cycles": 2, "night_max_minutes": 5}, tiny=True)
     assert cfg.model == cfg.tiny_model and cfg.cycles == 2 and cfg.max_minutes == 5 and cfg.max_steps == 40 and cfg.effective_batch == 4
+
+
+def test_doctor_uses_the_configured_trainer(tmp_path, monkeypatch, capsys):
+    from hypnos import cli
+
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    fake = tmp_path / "python"
+    fake.write_text("#!/bin/sh\necho 2.8.0 True\n")
+    fake.chmod(0o755)
+    cli.doctor({"trainer_python": str(fake)})
+    out = capsys.readouterr().out
+    assert f"[ok  ] trainer interpreter: {fake} (torch 2.8.0 True)" in out
