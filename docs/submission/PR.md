@@ -13,7 +13,7 @@ the brain it would replace. Hermes then routes the task families the brain has m
 habits it learned pruned from its prompt. Only procedural habits go into the weights; facts stay in Hermes's
 text memory. `/lethe` forgets a session or a habit exactly, by retraining from a clean ancestor.
 
-Trailer (88 s): <link to the X post>
+Trailer (88 s): https://x.com/acetaminofenol/status/2119120790495039622
 
 Not derived from any listed entry. The closest listed plugins are `icarus` (trains replacement models from
 session history) and `hermes-dreaming` (consolidates text memory at night). Hypnos trains on approvals,

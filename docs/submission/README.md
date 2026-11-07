@@ -30,7 +30,7 @@ before you take the SHA and add their URLs to the entry and `PR.md`.
 - The trailer is `../hypnos-trailer/renders/hypnos-trailer.mp4` (88 s, 1080p). The script is
   `docs/demo-script.md`.
 - Post it on X tagging @NousResearch, with the repository link.
-- Put the post's link in `docs/submission/PR.md` in place of `<link to the X post>`.
+- Posted: https://x.com/acetaminofenol/status/2119120790495039622 (already in `PR.md` and the README).
 
 ## 4. Catalog pull request
 

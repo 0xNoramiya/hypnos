@@ -17,6 +17,8 @@ one GPU, prompt tokens per turn fell from 24,636 to 5,256 and the brain answered
 
 <sub>Preview of the Desktop plugin rendered from the real data of the GPU timelapse below (Qwen3-0.6B on an A40, synthetic demo data); the window frame is a mock-up. See `docs/screenshots/`.</sub>
 
+Watch the 88-second trailer: [Hypnos on X](https://x.com/acetaminofenol/status/2119120790495039622).
+
 ## Habits go into the weights, facts stay in memory
 
 LoRA is good at learning how to do things and bad at learning new facts. Fine-tuning a model on facts it did
