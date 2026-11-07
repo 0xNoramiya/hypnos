@@ -94,7 +94,8 @@ def steps_for(n_examples: int, epochs: float, cfg: NightConfig, effective_batch:
 class Night:
     def __init__(self, db_path: str, data_dir: Path, cfg: NightConfig, *, memories_dir: Path | None = None,
                  broadcast: Callable[[str, dict], None] | None = None, log: Callable[[str], None] = lambda s: None,
-                 dreamer: Any = None):
+                 dreamer: Any = None, lethe: Any = None):
+        self.lethe = lethe
         self.db_path = db_path
         self.data_dir = Path(data_dir)
         self.cfg = cfg
@@ -179,12 +180,18 @@ class Night:
         rng = random.Random(self.night_id or 0)
         habit_rows = self._habit_rows()
         habit_texts = [h["statement"] for h in habit_rows]
-        seen = self._seen_episodes()
-        train_all = ds.episode_examples(self.conn, "train")
-        new = [e for e in train_all if e.episode_id not in seen]
-        old = [e for e in train_all if e.episode_id in seen]
-        replay = rng.sample(old, min(len(old), int(len(new) * self.cfg.replay_ratio) + 4)) if old else []
-        pairs = ds.pair_examples(self.conn)
+        if self.lethe is not None:
+            # Retraining after Lethe: exactly the contaminated brains' data, minus what was forgotten.
+            new = ds.episode_examples(self.conn, "train", episode_ids=self.lethe.retrain_episodes)
+            replay = []
+            pairs = ds.pair_examples(self.conn, pair_ids=self.lethe.retrain_pairs)
+        else:
+            seen = self._seen_episodes()
+            train_all = ds.episode_examples(self.conn, "train")
+            new = [e for e in train_all if e.episode_id not in seen]
+            old = [e for e in train_all if e.episode_id in seen]
+            replay = rng.sample(old, min(len(old), int(len(new) * self.cfg.replay_ratio) + 4)) if old else []
+            pairs = ds.pair_examples(self.conn)
         dream_ids = [r[0] for r in self.conn.execute("SELECT id FROM dreams WHERE night_id = ? AND excluded = 0",
                                                      (self.night_id,))]
         sft_rows, seen_keys = [], set()
@@ -213,8 +220,11 @@ class Night:
                                    "messages": build_messages(prompt.get("user", ""), prompt.get("history"), []),
                                    "tools": brain_tools(None, h["family"] or "shell"),
                                    "checker": dbmod.loads(p["checker_json"], {})})
-        for d in (self.dreamer.exam_items() if self.dreamer else []):
-            exam_items.append(d)
+        if self.dreamer:
+            exam_items.extend(self.dreamer.exam_items())
+        elif self.lethe is not None:
+            from .dreams import dream_exam_items
+            exam_items.extend(dream_exam_items(self.conn, self.night_id))
         paths = {name: night_dir / f"{name}.jsonl" for name in ("sft", "dpo", "exam")}
         ds.write_jsonl(paths["sft"], sft_rows)
         ds.write_jsonl(paths["dpo"], dpo_rows)
@@ -263,6 +273,11 @@ class Night:
             refreshed = habitsmod.refresh(self.conn, self.memories_dir)
             python = resolve_trainer_python(cfg.trainer_python, self.data_dir)
             parent = self._parent()
+            if self.lethe is not None:
+                parent = (self.conn.execute("SELECT * FROM brains WHERE version = ?", (self.lethe.parent,)).fetchone()
+                          if self.lethe.parent else None)
+                self.event("N2", "lethe", forgetting=f"{self.lethe.kind} {self.lethe.target}",
+                           contaminated=self.lethe.affected, parent=self.lethe.parent)
             if parent and parent["base_model"] != cfg.model:
                 self.event("N2", "new_base_model", was=parent["base_model"], now=cfg.model)
                 parent = None
@@ -351,6 +366,10 @@ class Night:
             except Exception:
                 self.conn.execute("ROLLBACK")
                 raise
+            if self.lethe is not None:
+                from .lineage import retire_contaminated
+                gone = retire_contaminated(self.conn, self.lethe, version if decision.promote else None)
+                self.event("WAKE", "lethe_done", retired=gone, new_version=version, promoted=decision.promote)
             from .report import build_report
             report = build_report(self.conn, self.night_id, version)
             status = "done" if decision.promote else "bad_night"

@@ -300,7 +300,9 @@ def repeated_habits(conn: sqlite3.Connection, min_count: int = 5) -> list[HabitS
 def upsert(conn: sqlite3.Connection, spec: HabitSpec) -> tuple[int, bool]:
     """Insert or merge a habit. Returns (habit id, created)."""
     now = time.time()
-    row = conn.execute("SELECT id, evidence_json, status FROM habits WHERE key = ?", (spec.key,)).fetchone()
+    row = conn.execute("SELECT id, evidence_json, status, excluded FROM habits WHERE key = ?", (spec.key,)).fetchone()
+    if row and (row["status"] == "forgotten" or row["excluded"]):
+        return row["id"], False  # Lethe forgot this habit; never learn it back from the same sources
     if row:
         evidence = sorted(set(dbmod.loads(row["evidence_json"], [])) | set(spec.evidence))
         conn.execute("UPDATE habits SET evidence_json = ?, updated_at = ? WHERE id = ?",

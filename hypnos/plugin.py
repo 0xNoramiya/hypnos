@@ -81,12 +81,42 @@ def register(ctx: Any) -> None:
     def brain_command(raw_args: str = "", **_: Any) -> str:
         try:
             words = (raw_args or "").split()
-            if words[:1] == ["rollback"] and len(words) == 2 and words[1].lstrip("v").isdigit():
-                message, brain = sleepcmd.rollback(hermes.db_path(), int(words[1].lstrip("v")))
+            nums = [int(w.lstrip("v")) for w in words[1:] if w.lstrip("v").isdigit()]
+            if words[:1] == ["rollback"] and len(nums) == 1:
+                message, brain = sleepcmd.rollback(hermes.db_path(), nums[0])
                 sleepcmd.sync_server(hermes.data_dir(), brain, settings())
                 return message
+            if words[:1] == ["diff"] and len(nums) == 2:
+                from . import db as dbmod
+                from . import lineage
+                conn = dbmod.open_db(hermes.db_path())
+                try:
+                    return lineage.diff(conn, hermes.data_dir(), nums[0], nums[1])
+                finally:
+                    conn.close()
+            if words[:1] == ["export"]:
+                from . import db as dbmod
+                from . import lineage
+                conn = dbmod.open_db(hermes.db_path())
+                try:
+                    version = nums[0] if nums else conn.execute(
+                        "SELECT MAX(version) FROM brains WHERE status = 'promoted'").fetchone()[0]
+                    if version is None:
+                        return "No brain to export yet."
+                    out = lineage.export(conn, version, hermes.data_dir() / "exports")
+                finally:
+                    conn.close()
+                return (f"Exported brain v{version} to {out} (adapter, model card, manifest hash; no captured data). "
+                        f"To publish it yourself: hf upload <your-repo> {out}")
             return sleepcmd.brain_list_text(hermes.db_path())
         except Exception as exc:
+            return f"Hypnos hit an error: {exc}"
+
+    def lethe_command(raw_args: str = "", **_: Any) -> str:
+        try:
+            return sleepcmd.lethe_slash(raw_args, db_path=hermes.db_path(), data_dir=hermes.data_dir())
+        except Exception as exc:
+            log.warning("hypnos: /lethe failed", exc_info=True)
             return f"Hypnos hit an error: {exc}"
 
     ctx.register_command("sleep", handler=sleep_command, description="Put Hypnos to sleep, check on it, or wake it",
@@ -94,7 +124,9 @@ def register(ctx: Any) -> None:
     ctx.register_command("hypnogram", handler=hypnogram_command, description="Sleep stages of the latest night",
                          args_hint="[night]")
     ctx.register_command("brain", handler=brain_command, description="Hypnos brain versions and lineage",
-                         args_hint="[list|rollback N]")
+                         args_hint="[list|diff A B|rollback N|export [N]]")
+    ctx.register_command("lethe", handler=lethe_command, description="Forget a session, a habit or matching turns exactly",
+                         args_hint="session ID | habit ID | search TEXT | confirm CODE")
 
     if hasattr(ctx, "register_auxiliary_task"):
         try:

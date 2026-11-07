@@ -275,17 +275,7 @@ class Dreamer:
         """Tonight's dreams plus earlier ones (the regression set), without habit text."""
         if self.night is None:
             return []
-        rows = self.night.conn.execute(
-            "SELECT * FROM dreams WHERE excluded = 0 ORDER BY (night_id = ?) DESC, id DESC LIMIT ?",
-            (self.night.night_id, self.regression_cap)).fetchall()
-        items = []
-        for row in rows:
-            prompt = dbmod.loads(row["prompt_json"], {})
-            items.append({"id": f"dream:{row['id']}", "kind": "dream", "habit_id": row["habit_id"], "family": row["family"],
-                          "messages": build_messages(prompt.get("user", ""), prompt.get("history"), []),
-                          "tools": brain_tools(None, row["family"] or "shell"),
-                          "checker": dbmod.loads(row["checker_json"], {})})
-        return items
+        return dream_exam_items(self.night.conn, self.night.night_id, self.regression_cap)
 
     def after_exam(self, results: list) -> int:
         """Mark nightmares the candidate now passes as resolved. Returns how many were resolved."""
@@ -305,6 +295,21 @@ class Dreamer:
                 resolved += 1
                 self.night.event("WAKE", "nightmare_resolved", dream=dream_id)
         return resolved
+
+
+def dream_exam_items(conn, night_id: int | None, cap: int = 40) -> list[dict]:
+    rows = conn.execute(
+        "SELECT d.* FROM dreams d LEFT JOIN habits h ON h.id = d.habit_id WHERE d.excluded = 0 "
+        "AND (h.id IS NULL OR (h.excluded = 0 AND h.status = 'active')) ORDER BY (d.night_id = ?) DESC, d.id DESC LIMIT ?",
+        (night_id, cap)).fetchall()
+    items = []
+    for row in rows:
+        prompt = dbmod.loads(row["prompt_json"], {})
+        items.append({"id": f"dream:{row['id']}", "kind": "dream", "habit_id": row["habit_id"], "family": row["family"],
+                      "messages": build_messages(prompt.get("user", ""), prompt.get("history"), []),
+                      "tools": brain_tools(None, row["family"] or "shell"),
+                      "checker": dbmod.loads(row["checker_json"], {})})
+    return items
 
 
 def worker_generate(python: Path, base_model: str, adapter: str | None, hyper: dict | None = None):

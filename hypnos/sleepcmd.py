@@ -212,3 +212,98 @@ def sync_server(data_dir: Path, brain: dict | None, settings: dict, *, allow_sta
         brainserver.swap(data_dir, brain["adapter_path"], brain["version"])
     except Exception:
         brainserver.stop(data_dir)
+
+
+# --- Lethe -----------------------------------------------------------------------------------------------
+
+LETHE_USAGE = ("Usage: /lethe session <id> | /lethe habit <id> | /lethe search <text>, then /lethe confirm <code>.\n"
+               "Lethe forgets the data exactly: brains that trained on it are retired and a clean one is retrained.")
+
+
+def lethe_plan_text(db_path: str, kind: str, target: str) -> str:
+    from . import lineage
+    conn = dbmod.open_db(db_path)
+    try:
+        plan = lineage.plan(conn, kind, target)
+        if not (plan.episodes or plan.pairs or plan.habits or plan.dreams):
+            return f"Nothing matches {kind} {target}."
+        code = lineage.stage(conn, plan)
+        return f"{plan.summary()}\nTo go ahead, run /lethe confirm {code} within 15 minutes."
+    finally:
+        conn.close()
+
+
+def lethe_apply(db_path: str, plan) -> tuple[bool, str]:
+    """Exclude the data now. Returns (needs_retrain, message)."""
+    from . import lineage
+    conn = dbmod.open_db(db_path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        lineage.exclude(conn, plan)
+        current = conn.execute("SELECT version FROM brains WHERE status = 'promoted'").fetchone()
+        needs = bool(plan.affected) and bool(plan.retrain_episodes or plan.retrain_pairs)
+        if plan.affected and not needs:
+            lineage.retire_contaminated(conn, plan, None)
+        if plan.affected and current and current["version"] not in plan.affected:
+            needs = False
+            lineage.retire_contaminated(conn, plan, current["version"])
+        conn.execute("COMMIT")
+        msg = (f"Forgot {plan.kind} {plan.target}: {len(plan.episodes)} turns, {len(plan.pairs)} pairs, "
+               f"{len(plan.habits)} habits and {len(plan.dreams)} dreams are excluded from now on.")
+        return needs, msg
+    finally:
+        conn.close()
+
+
+def lethe_run(*, db_path: str, data_dir: Path, memories_dir: Path | None, settings: dict, plan,
+              out: Callable[[str], None] = print) -> int:
+    cfg = night_config(settings, trigger="lethe")
+    night = Night(db_path, data_dir, cfg, memories_dir=memories_dir, log=out, lethe=plan)
+    try:
+        report = night.run()
+    except NightError as exc:
+        out(f"Lethe could not retrain: {exc}")
+        return 1
+    if report.get("version"):
+        conn = dbmod.open_db(db_path)
+        brain = conn.execute("SELECT * FROM brains WHERE status = 'promoted' ORDER BY version DESC LIMIT 1").fetchone()
+        conn.close()
+        sync_server(data_dir, dict(brain) if brain else None, settings, allow_start=bool(brain), out=out)
+    out(render_report(report))
+    return 0
+
+
+def lethe_slash(raw: str, *, db_path: str, data_dir: Path, spawn: Callable[[list[str], Path], int] | None = None) -> str:
+    from . import lineage
+    words = (raw or "").split(maxsplit=1)
+    if not words:
+        return LETHE_USAGE
+    kind, rest = words[0].lower(), (words[1].strip() if len(words) > 1 else "")
+    if kind == "confirm":
+        conn = dbmod.open_db(db_path)
+        try:
+            plan = lineage.take_pending(conn, rest)
+        finally:
+            conn.close()
+        if plan is None:
+            return "That confirmation code is unknown or expired. Run the /lethe request again."
+        needs, msg = lethe_apply(db_path, plan)
+        if not needs:
+            return msg + " No brain needs retraining."
+        conn = dbmod.open_db(db_path)
+        dbmod.set_meta(conn, "lethe_running", plan.as_dict())
+        conn.close()
+        pid = (spawn or _spawn_lethe)(["run"], data_dir)
+        return msg + f" Retraining a clean brain in the background (pid {pid}); /hypnos report shows the result."
+    if kind not in ("session", "habit", "search") or not rest:
+        return LETHE_USAGE
+    return lethe_plan_text(db_path, kind, rest)
+
+
+def _spawn_lethe(args: list[str], data_dir: Path) -> int:
+    root = hermes_root()
+    log = open(data_dir / "nights" / "lethe.log", "a", encoding="utf-8") if (data_dir / "nights").exists() else subprocess.DEVNULL
+    proc = subprocess.Popen([sys.executable, "-m", "hermes_cli.main", "hypnos", "lethe", *args],
+                            cwd=str(root) if root else None, env=os.environ.copy(), stdout=log, stderr=log,
+                            stdin=subprocess.DEVNULL, start_new_session=True)
+    return proc.pid

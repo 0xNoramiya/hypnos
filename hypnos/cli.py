@@ -29,8 +29,14 @@ def setup(parser: argparse.ArgumentParser) -> None:
     gram = sub.add_parser("hypnogram", help="Show a night's sleep stages")
     gram.add_argument("night", nargs="?", type=int)
     brain = sub.add_parser("brain", help="Brain versions and lineage")
-    brain.add_argument("action", nargs="?", default="list", choices=["list", "rollback"])
-    brain.add_argument("version", nargs="?", type=int)
+    brain.add_argument("action", nargs="?", default="list", choices=["list", "rollback", "diff", "export"])
+    brain.add_argument("versions", nargs="*", type=int)
+    brain.add_argument("--to", help="Export folder (default plugin-data/hypnos/exports)")
+    brain.add_argument("--push-to-hub", metavar="REPO", help="After exporting, run `hf upload REPO FOLDER` with your own hf login")
+    lethe = sub.add_parser("lethe", help="Forget a session, a habit, or matching turns, exactly")
+    lethe.add_argument("kind", choices=["session", "habit", "search", "run"])
+    lethe.add_argument("target", nargs="*")
+    lethe.add_argument("--yes", action="store_true", help="Do not ask for confirmation")
     serve = sub.add_parser("serve", help="Start, stop or inspect the local brain server")
     serve.add_argument("action", nargs="?", default="status", choices=["start", "stop", "status"])
     mark = sub.add_parser("mark", help="Mark the last reply good or bad")
@@ -75,16 +81,30 @@ def run(args: Any, commands: Any, llm: Any = None) -> int:
         return 0
     if cmd == "brain":
         from . import sleepcmd
+        if args.action == "diff":
+            if len(args.versions) != 2:
+                print("Usage: hermes hypnos brain diff A B")
+                return 2
+            from . import db as dbmod
+            from . import lineage
+            conn = dbmod.open_db(hermes.db_path())
+            print(lineage.diff(conn, hermes.data_dir(), args.versions[0], args.versions[1]))
+            conn.close()
+            return 0
+        if args.action == "export":
+            return export_cmd(args)
         if args.action == "rollback":
-            if args.version is None:
+            if len(args.versions) != 1:
                 print("Usage: hermes hypnos brain rollback VERSION (0 for no brain)")
                 return 2
-            message, target = sleepcmd.rollback(hermes.db_path(), args.version)
+            message, target = sleepcmd.rollback(hermes.db_path(), args.versions[0])
             sleepcmd.sync_server(hermes.data_dir(), target, commands.settings())
             print(message)
             return 0
         print(sleepcmd.brain_list_text(hermes.db_path()))
         return 0
+    if cmd == "lethe":
+        return lethe_cmd(args, commands)
     if cmd == "serve":
         return serve(args.action, commands.settings())
     if cmd == "mark":
@@ -93,6 +113,87 @@ def run(args: Any, commands: Any, llm: Any = None) -> int:
         return 0
     print(f"Unknown command: {cmd}", file=sys.stderr)
     return 2
+
+
+def export_cmd(args: Any) -> int:
+    from pathlib import Path
+
+    from . import db as dbmod
+    from . import lineage
+    conn = dbmod.open_db(hermes.db_path())
+    try:
+        version = args.versions[0] if args.versions else conn.execute(
+            "SELECT MAX(version) FROM brains WHERE status = 'promoted'").fetchone()[0]
+        if version is None:
+            print("No brain to export yet.")
+            return 1
+        out = lineage.export(conn, version, Path(args.to) if args.to else hermes.data_dir() / "exports")
+    finally:
+        conn.close()
+    print(f"Exported brain v{version} to {out}: adapter, model card and manifest hash. No captured data is included.")
+    if args.push_to_hub:
+        hf = shutil_which("hf")
+        if not hf:
+            print("The hf CLI is not installed; upload the folder yourself.")
+            return 1
+        print(f"Uploading with your own hf login: hf upload {args.push_to_hub} {out}")
+        return subprocess.run([hf, "upload", args.push_to_hub, str(out)]).returncode
+    return 0
+
+
+def shutil_which(name: str) -> str | None:
+    import shutil
+    return shutil.which(name)
+
+
+def lethe_cmd(args: Any, commands: Any) -> int:
+    import sys as _sys
+
+    from . import db as dbmod
+    from . import lineage, sleepcmd
+    db_path = hermes.db_path()
+    if args.kind == "run":
+        conn = dbmod.open_db(db_path)
+        data = dbmod.get_meta(conn, "lethe_running")
+        dbmod.set_meta(conn, "lethe_running", None)
+        conn.close()
+        if not data:
+            print("No Lethe retraining is pending.")
+            return 0
+        data.pop("created", None)
+        return sleepcmd.lethe_run(db_path=db_path, data_dir=hermes.data_dir(), memories_dir=hermes.memories_dir(),
+                                  settings=commands.settings(), plan=lineage.LethePlan(**data))
+    target = " ".join(args.target)
+    if not target:
+        print("Usage: hermes hypnos lethe session|habit|search TARGET [--yes]")
+        return 2
+    conn = dbmod.open_db(db_path)
+    try:
+        plan = lineage.plan(conn, args.kind, target)
+    except ValueError as exc:
+        print(exc)
+        return 1
+    finally:
+        conn.close()
+    if not (plan.episodes or plan.pairs or plan.habits or plan.dreams):
+        print(f"Nothing matches {args.kind} {target}.")
+        return 0
+    print(plan.summary())
+    if not args.yes:
+        if not _sys.stdin.isatty():
+            print("Refusing without confirmation: rerun with --yes.")
+            return 1
+        from hermes_cli.setup import prompt_yes_no
+        if not prompt_yes_no("Forget this and retrain?", default=False):
+            print("Cancelled. Nothing was changed.")
+            return 0
+    needs, message = sleepcmd.lethe_apply(db_path, plan)
+    print(message)
+    if not needs:
+        print("No brain needs retraining.")
+        return 0
+    return sleepcmd.lethe_run(db_path=db_path, data_dir=hermes.data_dir(), memories_dir=hermes.memories_dir(),
+                              settings=commands.settings(), plan=plan)
 
 
 def serve(action: str, settings: dict) -> int:
