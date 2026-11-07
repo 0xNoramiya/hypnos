@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+# never commit model weights or training data
+*.safetensors
+*.bin
+*.gguf
+*.pt
+*.pth
+*.ckpt
+*.npz
+adapters/
+brains/
+runs/
+.hypnos-data/
+node_modules/
+.DS_Store
