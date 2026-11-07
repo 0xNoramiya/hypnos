@@ -44,7 +44,37 @@ def register(ctx: Any) -> None:
 
     ctx.register_command("hypnos", handler=hypnos_command,
                          description="Hypnos status, on/off, and good/bad marks",
-                         args_hint="[status|habits|on|off|good|bad|help]")
+                         args_hint="[status|habits|report|on|off|good|bad|help]")
+
+    from . import sleepcmd
+
+    def sleep_command(raw_args: str = "", **_: Any) -> str:
+        try:
+            writer.flush(1.0)
+            return sleepcmd.sleep_slash(raw_args, db_path=hermes.db_path(), data_dir=hermes.data_dir())
+        except Exception as exc:
+            log.warning("hypnos: /sleep failed", exc_info=True)
+            return f"Hypnos hit an error: {exc}"
+
+    def hypnogram_command(raw_args: str = "", **_: Any) -> str:
+        try:
+            arg = (raw_args or "").strip()
+            return sleepcmd.hypnogram_text(hermes.db_path(), int(arg) if arg.isdigit() else None)
+        except Exception as exc:
+            return f"Hypnos hit an error: {exc}"
+
+    def brain_command(raw_args: str = "", **_: Any) -> str:
+        try:
+            return sleepcmd.brain_list_text(hermes.db_path())
+        except Exception as exc:
+            return f"Hypnos hit an error: {exc}"
+
+    ctx.register_command("sleep", handler=sleep_command, description="Put Hypnos to sleep, check on it, or wake it",
+                         args_hint="[now|status|cancel]")
+    ctx.register_command("hypnogram", handler=hypnogram_command, description="Sleep stages of the latest night",
+                         args_hint="[night]")
+    ctx.register_command("brain", handler=brain_command, description="Hypnos brain versions and lineage",
+                         args_hint="[list]")
 
     from . import cli
     ctx.register_cli_command("hypnos", help="Hypnos: Hermes learns in its sleep",

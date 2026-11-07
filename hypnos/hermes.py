@@ -54,3 +54,12 @@ def secret(name: str) -> str:
         return get_secret(name) or ""
     except Exception:
         return ""
+
+
+def broadcast(event: str, payload: dict) -> None:
+    """Push a live event to the Desktop. Delivered only from the gateway process; dropped elsewhere."""
+    try:
+        from hermes_cli.plugin_events import broadcast_plugin_event
+        broadcast_plugin_event(PLUGIN_ID, event, payload)
+    except Exception:
+        pass

@@ -16,6 +16,13 @@ DEFAULTS: dict[str, Any] = {
     "inject_habits": True,
     "pressure_scale": 25.0,
     "retention_days": 90,
+    "base_model": "Qwen/Qwen3-0.6B",
+    "tiny_model": "HuggingFaceTB/SmolLM2-135M-Instruct",
+    "trainer_python": "",
+    "cycles": 4,
+    "night_max_minutes": 60,
+    "probe_pass_threshold": 0.9,
+    "brain_port": 8765,
 }
 
 

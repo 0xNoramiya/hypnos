@@ -19,6 +19,7 @@ HYPNOS_HELP = """Hypnos learns your habits while Hermes sleeps.
   /hypnos on | off      start or stop capture and routing
   /hypnos habits        the habit ledger and what each brain has consolidated
   /hypnos habits refresh   re-read pairs, repeats and MEMORY.md / USER.md
+  /hypnos report        the last morning report
   /hypnos good [note]   mark the last reply as good
   /hypnos bad [note]    mark the last reply as bad
 """
@@ -201,6 +202,9 @@ class Commands:
                 return note + render_habits(conn)
             finally:
                 conn.close()
+        if sub == "report":
+            from .sleepcmd import report_text
+            return report_text(self.db_path(), int(rest) if rest.strip().isdigit() else None)
         if sub in ("good", "bad"):
             self.mark(sub == "good", session_id, rest)
             return f"Marked the last reply as {sub}." + (" It counts toward tonight's sleep." if sub == "bad" else "")

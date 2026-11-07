@@ -55,3 +55,34 @@ config_schema:
     type: int
     default: 90
     label: Keep captured turns for (days)
+  base_model:
+    type: str
+    default: Qwen/Qwen3-0.6B
+    label: Brain base model
+    description: Small open tool-calling model the LoRA brain is trained on. Qwen/Qwen3-1.7B is a good choice on a GPU.
+  tiny_model:
+    type: str
+    default: HuggingFaceTB/SmolLM2-135M-Instruct
+    label: Tiny model for quick test nights (--tiny)
+  trainer_python:
+    type: str
+    default: ""
+    label: Trainer Python
+    description: Interpreter with torch, transformers and peft. Empty means plugin-data/hypnos/trainer/bin/python.
+  cycles:
+    type: int
+    default: 4
+    label: Sleep cycles per night
+  night_max_minutes:
+    type: int
+    default: 60
+    label: Longest night (minutes)
+  probe_pass_threshold:
+    type: float
+    default: 0.9
+    label: Consolidation threshold
+    description: Share of a habit's probes the brain must pass without the habit text before it is pruned from the prompt.
+  brain_port:
+    type: int
+    default: 8765
+    label: Brain server port (loopback only)
