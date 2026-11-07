@@ -20,7 +20,13 @@ const ctx = {
   pet: { say: () => () => {}, visible: { get: () => false } }, os: { notify: () => {} }
 }
 plugin.register(ctx)
-for (const [p, data] of Object.entries(fx)) sdk.queryClient.setQueryData(['hypnos', 'c1', 'default', p], data)
+for (const [p, data] of Object.entries(fx)) {
+  sdk.queryClient.setQueryData(['hypnos', 'c1', 'default', p], data)
+  if (p.startsWith('/turns/')) {
+    const encoded = '/turns/' + encodeURIComponent(p.slice('/turns/'.length))
+    sdk.queryClient.setQueryData(['hypnos', 'c1', 'default', encoded], data)
+  }
+}
 const byId = Object.fromEntries(contributions.map(c => [c.id, c]))
 const turnId = Object.keys(fx).find(k => k.startsWith('/turns/'))?.slice('/turns/'.length)
 const html = {
@@ -42,7 +48,7 @@ const TOKENS = `
   --ui-bg-card:color-mix(in srgb, var(--ui-accent) 4%, color-mix(in srgb, var(--ui-base) 4%, var(--card-seed)));
   --ui-bg-elevated:var(--card-seed); --ui-bg-input:var(--card-seed); --ui-bg-chrome:var(--chrome); --ui-bg-secondary:var(--chrome); }
 * { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--ui-text-primary);
-  font:13px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  font:13px/1.45 Inter, "Ubuntu Sans", Ubuntu, "Noto Sans", ui-sans-serif, system-ui, sans-serif; }
 .window { width:1180px; border:1px solid var(--ui-stroke-secondary); border-radius:12px; overflow:hidden; margin:24px; background:var(--bg) }
 .titlebar { height:38px; display:flex; align-items:center; gap:8px; padding:0 14px; background:var(--ui-bg-chrome);
   border-bottom:1px solid var(--ui-stroke-tertiary); color:var(--ui-text-tertiary); font-size:12px }

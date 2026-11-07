@@ -11,7 +11,9 @@ personal model, a LoRA brain. In the morning the brain takes an exam. If it beat
 Hermes routes the turns it has mastered to it, and the habits now living in its weights are pruned from its
 prompt. The prompt gets smaller every night while the work stays correct.
 
-<!-- screenshot: docs/screenshots/report.png -->
+![The Hypnos morning report after a real night: hypnogram, sleep study, exam deltas, the habit moved into the weights](docs/screenshots/preview-report-dark.png)
+
+<sub>Preview of the Desktop plugin rendered from a real night's data (SmolLM2-135M trained on CPU, dreams in Docker); the window frame is a mock-up. See `docs/screenshots/`.</sub>
 
 ## Habits go into the weights, facts stay in memory
 
@@ -220,9 +222,12 @@ real run, not from a mock.
 | Routing passthrough cost | p50 0.016 ms, p95 0.036 ms (budget 10 ms) |
 | A brain-answered turn through real Hermes | 0 calls to the user's model; prompt about 12,300 tokens for the frontier against 62 to 136 for the brain, so about 12,200 tokens saved per call |
 | A brain-proposed `rm -rf` outside the project | Blocked by Hermes approvals, folder intact, recorded as a denial |
-| One night on SmolLM2-135M, CPU | Habit probes "use pnpm" 0/10 before, 10/10 after 30 SFT steps (loss 1.47 to 0.0003) |
+| One full night on SmolLM2-135M, CPU, 3 cycles, dreams in Docker | 28.9 min. Held-out next action 50% to 100%, habit probes 0% to 100%, dreams 0% to 100%, 3 of 3 nightmares resolved, lower bound 0.77 against a 0.15 baseline: promoted |
+| The next turn, through the routing middleware | "Add dayjs to the CLI." answered by brain v1 with `pnpm add dayjs` (mean token log-prob -0.02): 235 prompt tokens instead of 12,201, consolidated habit pruned, 0 calls to the user's model |
+| An earlier 30-step SFT run, same model | Habit probes "use pnpm" 0/10 before, 10/10 after (loss 1.47 to 0.0003) |
 | Day one of the synthetic timelapse | 21 turns, 5 corrections, 2 denials, sleep pressure 78% |
 | Inference through the PEFT wrapper vs merged LoRA | 103 s vs 8.5 s for 8 prompts, so inference always merges |
+| Peak memory of a CPU training step (SmolLM2-135M, batch 4, 768 tokens) | 6.2 GB before, 1.7 GB with gradient checkpointing and completion-only log-probs |
 
 The 10/10 night also shows why the exam needs more than probes: asked to remove a package, the tiny brain
 answered `pnpm add prettier`. That passes the habit check (pnpm) and fails the held-out next-action check,

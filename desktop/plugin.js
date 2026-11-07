@@ -105,7 +105,7 @@ function Moon({ ctx, onOpen }) {
       'aria-label': `Hypnos: ${lines.join('. ')}`,
       style: {
         display: 'inline-flex', alignItems: 'center', gap: 5, height: '100%', padding: '0 6px', border: 0,
-        background: 'transparent', color, cursor: 'pointer', fontSize: '0.6875rem', fontVariantNumeric: 'tabular-nums'
+        background: 'transparent', color, cursor: 'pointer', font: 'inherit', fontSize: '0.6875rem', fontVariantNumeric: 'tabular-nums'
       }
     },
     h(MoonGlyph, { fill: sleeping ? 1 : (data.pressure || 0) / 100, sleeping }),
@@ -175,7 +175,8 @@ function HypnogramChart({ payload, onSelect, selected }) {
       'No nights yet. Run /sleep now, or press Sleep now above.')
   }
   const padL = 44, padR = 12, padT = 10, rowH = 26
-  const height = padT + rowH * STAGES.length + 26
+  const base = padT + rowH * STAGES.length
+  const height = base + 34
   const t0 = segs[0].start
   const t1 = Math.max(...segs.map(s => s.end || s.start), t0 + 1)
   const x = t => padL + ((t - t0) / (t1 - t0)) * (width - padL - padR)
@@ -208,7 +209,7 @@ function HypnogramChart({ payload, onSelect, selected }) {
   cycleStarts.forEach(({ t, c }) => {
     children.push(h('line', { key: `c${c}`, x1: x(t), x2: x(t), y1: padT, y2: padT + rowH * STAGES.length,
       style: { stroke: 'var(--ui-stroke-secondary)', strokeDasharray: '3 3' } }))
-    children.push(h('text', { key: `ct${c}`, x: x(t) + 3, y: padT + rowH * STAGES.length + 14,
+    children.push(h('text', { key: `ct${c}`, x: x(t) + 3, y: base + 12,
       style: { fill: 'var(--ui-text-tertiary)', fontSize: 10 } }, `cycle ${c}`))
   })
   children.push(h('path', { key: 'step', d: path, style: { fill: 'none', stroke: 'var(--ui-text-quaternary)', strokeWidth: 1.2 } }))
@@ -219,7 +220,7 @@ function HypnogramChart({ payload, onSelect, selected }) {
       key: `s${i}`, x: x0, y: y(s.stage) - 6, width: x1 - x0, height: 12, rx: 3,
       role: 'button', tabIndex: 0, 'aria-label': `${STAGE_LABEL[s.stage]}, ${minutes((s.end || s.start) - s.start)}`,
       onClick: () => onSelect(i), onKeyDown: e => { if (e.key === 'Enter') onSelect(i) },
-      style: { fill: STAGE_COLOR[s.stage], opacity: isSel ? 1 : 0.85, cursor: 'pointer',
+      style: { fill: STAGE_COLOR[s.stage], opacity: isSel ? 1 : 0.85, cursor: 'pointer', font: 'inherit',
         stroke: isSel ? 'var(--ui-text-primary)' : 'none', strokeWidth: isSel ? 1.5 : 0 }
     }))
   })
@@ -230,7 +231,7 @@ function HypnogramChart({ payload, onSelect, selected }) {
         style: { fill: 'var(--ui-red)' } }, h('title', null, `Nightmare: ${m.ev.request || ''}`))
       : h('circle', { key: `m${i}`, cx, cy, r: 3.5, style: { fill: 'var(--ui-green)' } }, h('title', null, 'Nightmare resolved')))
   })
-  children.push(h('text', { key: 't0', x: padL, y: height - 4, style: { fill: 'var(--ui-text-tertiary)', fontSize: 10 } }, '0'))
+  children.push(h('text', { key: 't0', x: padL, y: height - 4, style: { fill: 'var(--ui-text-tertiary)', fontSize: 10 } }, '0 min'))
   children.push(h('text', { key: 't1', x: width - padR, y: height - 4, textAnchor: 'end',
     style: { fill: 'var(--ui-text-tertiary)', fontSize: 10 } }, minutes(t1 - t0)))
   return h('div', { ref: wrap, style: { width: '100%' } },
@@ -341,7 +342,7 @@ function Report({ ctx }) {
     }
   }
   const btn = { padding: '5px 12px', borderRadius: 7, border: '1px solid var(--ui-stroke-secondary)',
-    background: 'var(--ui-bg-elevated, var(--ui-bg-secondary))', color: 'var(--ui-text-primary)', cursor: 'pointer', fontSize: 12 }
+    background: 'var(--ui-bg-elevated, var(--ui-bg-secondary))', color: 'var(--ui-text-primary)', cursor: 'pointer', font: 'inherit', fontSize: 12 }
   const exam = r && r.exam ? r.exam : { candidate: {}, baseline: {} }
   return h('div', { style: { height: '100%', overflow: 'auto' } },
     h('div', { style: { maxWidth: 920, margin: '0 auto', padding: '20px 20px 40px', display: 'grid', gap: 14 } },
@@ -400,7 +401,7 @@ function Report({ ctx }) {
             h('span', { style: { marginRight: 6 } }, '.'), x.statement))) : null,
         (r.reasons || []).length ? h('div', { style: { fontSize: 12, color: 'var(--ui-text-tertiary)' } },
           r.reasons.map((x, i) => h('div', { key: `r${i}` }, x))) : null) : null,
-      metrics.data && metrics.data.days && metrics.data.days.length ? h('div', { style: card },
+      metrics.data && metrics.data.days && metrics.data.days.length >= 2 ? h('div', { style: card },
         h('div', { style: { fontWeight: 600, color: 'var(--ui-text-primary)', fontSize: 13 } }, 'Prompt tokens per turn, by day'),
         h('div', { style: { fontSize: 12, color: 'var(--ui-text-tertiary)', marginBottom: 8 } },
           'Bars: average prompt tokens per turn (lighter when more turns went to the brain). Line: turns that needed no correction.'),
@@ -488,7 +489,7 @@ export default {
         render: () => h('div', { style: { display: 'grid', gap: 10, padding: 4, fontSize: 13, color: 'var(--ui-text-secondary)' } },
           h('div', null, 'Hypnos captures what you approve, deny and correct, and trains a small LoRA brain while Hermes sleeps. Settings for capture, routing, the brain and dreams are under Agent settings.'),
           h('div', null, h('button', { type: 'button', onClick: () => host.navigate('/hypnos'),
-            style: { padding: '5px 12px', borderRadius: 7, border: '1px solid var(--ui-stroke-secondary)', background: 'transparent', color: 'var(--ui-text-primary)', cursor: 'pointer' } },
+            style: { padding: '5px 12px', borderRadius: 7, border: '1px solid var(--ui-stroke-secondary)', background: 'transparent', color: 'var(--ui-text-primary)', cursor: 'pointer', font: 'inherit' } },
           'Open the morning report')))
       })
     }
