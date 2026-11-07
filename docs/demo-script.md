@@ -1,36 +1,57 @@
-# Demo video script (under 90 seconds)
+# Launch trailer script (88 seconds)
 
-Caption on screen for the whole video: "Synthetic demo data: a scripted developer persona."
+A product-launch trailer: black stage, one idea per beat, big type, long holds, then a hard hit. The god of
+sleep is the hero image; everything about the product is real motion graphics built from the GPU run in the
+README. The caption "Synthetic demo data · real training runs" stays on screen the whole time.
 
-## Setup before recording
+- Built with HyperFrames (motion graphics and the edit), Higgsfield (images and three image-to-video shots of
+  the god) and ElevenLabs (narration in the voice "Orion", and the score with ElevenLabs Music).
+- Type: Newsreader, a serif, for statements, the title and the big numbers; Geist Mono for data, labels and
+  terminal lines. The god speaks in serif, the machine in mono.
+- Color: night black, moonlight white, Hypnos lavender (REM), stage blue (N3), dawn gold, promotion green and
+  nightmare red, the colors of the Desktop plugin.
+- Project: `../hypnos-trailer/`, outside this repo so media never lands here.
 
-1. A Hermes profile just for the demo, so nothing touches real data:
-   `hermes profile create hypnos-demo && hermes -p hypnos-demo plugins enable hypnos`
-2. Run the timelapse once to have nights, a hypnogram, a promoted brain and the chart:
-   `hermes -p hypnos-demo hypnos demo timelapse --days 5` (GPU) or `--tiny` (CPU).
-3. In Hermes Desktop, connect to the `hypnos-demo` profile and turn on Hypnos under Capabilities, then
-   Plugins. Give the profile a real model for the live turns in shot 4.
-4. Keep a project folder with a `package.json` open as the working directory.
-5. Record at 1080p, dark theme. Trim waits; never speed up text.
+## Rhythm
 
-## Shots
+`cold open (slow) → REVEAL (shader) → day (quick) → NIGHT (slow centerpiece) → principle (split) → exam
+(punch) → PROOF (peak) → trust (beat) → end card (hold)`
 
-| Time | Shot | On screen | Voice-over or caption |
+## Beats
+
+| Time | Beat | Picture and motion | Voice |
 |---|---|---|---|
-| 0 to 6 s | Day | Chat: "Add zod to the API." Hermes runs `npm install zod`. You type "no, we use pnpm here". Hermes runs `pnpm add zod`. | "During the day, Hypnos watches what I correct." |
-| 6 to 12 s | Denial | "Push the search box work." Hermes proposes `git push origin main`. The approval prompt, Deny. "never push to main, make a feature branch." Hermes branches and pushes. | "And what I deny." |
-| 12 to 15 s | Pressure | Zoom on the status bar moon filling to 78%. | "Sleep pressure builds." |
-| 15 to 22 s | Lights out | Type `/sleep now`. Open the hypnogram from the moon. | "At night, it sleeps." |
-| 22 to 38 s | Hypnogram | The step chart draws: N1, N2, then N3 and REM cycles. Red diamonds for nightmares appear in N2, then green dots at wake. Click one REM segment to show the details panel. | "It replays the day, dreams up variations of its mistakes, practises them in a sandbox, and trains them into a small LoRA brain." |
-| 38 to 45 s | Exam | The waking-exam events at the end of the chart. | "In the morning, it takes an exam." |
-| 45 to 65 s | Morning report | The `/hypnos` page on night 2: sleep study numbers, held-out next action 67% to 83%, habit probes 70% to 78%, nightmares resolved, the 4 habits consolidated into the weights and pruned from the prompt, "Promoted brain v2". | "Habits go into the weights. Facts stay in memory. The habits it now knows are pruned from its prompt." |
-| 65 to 80 s | Next day | New chat: "Add dayjs to the CLI." The reply arrives with the badge "brain v2 · 12.2k tokens saved". Then "Push the export work." The brain creates a branch; the approval prompt still appears. | "The next day, the brain answers the turns it has mastered. Hermes's approvals still apply." |
-| 80 to 90 s | The curve | Scroll to "Prompt tokens per turn, by day": bars falling from about 24.6k on day one to about 5.3k on day five as the brain's share grows to 81%, the success line flat at 100% after day one. End card: "Hypnos. Hermes learns in its sleep." | "The prompt gets smaller every night. The work stays right." |
+| 0.0 to 7.0 | The loop | Black. A mono chat bubble types on: "no, we use pnpm here", stamped Mon 09:12. A second one, Tue 10:40. A third, in Indonesian, Wed 14:03: "bukan npm, pakai pnpm". The bubbles stack; a counter ticks to ×3. | "You told it to use pnpm." ... "Then you told it again. And again." |
+| 7.0 to 12.5 | Text is not learning | A `MEMORY.md` card fills with the same line, again and again, faster, until it scrolls away. The lines grey out. | "Agents write down what you say. They never learn how you work." |
+| 12.5 to 21.0 | Reveal | Dissolve into the god asleep under a crescent moon (Higgsfield shot: slow push, drifting mist). A soft boom. HYPNOS draws on in thin serif with wide tracking; the tagline fades up beneath. | "This is Hypnos." ... "Hermes learns in its sleep." |
+| 21.0 to 31.0 | Day | Signal chips fly in from the edges: approved, denied, corrected, tests passed. Each drops into a moon gauge that fills to 78% and reads "Sleep pressure". | "By day, it watches. What you approve. What you deny. What you correct." |
+| 31.0 to 47.0 | Night, the centerpiece | Over the dream nebula, the real hypnogram of night 2 draws itself: WAKE, N1, N2, then four cycles of N3 and REM. Labels land: "N3 · replay the day", "REM · dream the mistakes". Red nightmare diamonds pop, then turn green. A sandbox line: `rm -rf ../app-backup/dist` struck out, `rm -rf ./dist` checked. The lattice shot (Higgsfield) blooms behind "a small brain of its own". | "At night, it sleeps." ... "It replays the day. It dreams up new versions of its mistakes, practises them in a sandbox, and trains what it learned into a small brain of its own." |
+| 47.0 to 54.0 | The principle | Split frame. Left, "Habits → weights": "Use pnpm, never npm" flies into the lattice and dissolves into light. Right, "Facts → memory": "The API runs on Postgres 16" stays put in `MEMORY.md`. | "Habits go into the weights. Facts stay in memory." |
+| 54.0 to 63.0 | The exam | The god wakes at dawn (Higgsfield shot: gold light, eyes open). Exam bars race: held-out next action 67% → 83%, habit probes 70% → 78%, dreams 60% → 80%. Stamp: PROMOTED · BRAIN V2. Then a quick second card: NIGHT 4 · REJECTED · V2 STAYS. | "In the morning, it takes an exam. Pass, and the new brain takes over. Fail, and the old one stays." |
+| 63.0 to 75.0 | Proof, the peak | The keynote number: 24,636 counts down to 5,256 prompt tokens per turn. Five day bars fall in sequence. Then two more figures: 81% of turns answered by its own brain; 100% task success on days 2 to 5. | "By day five, its prompt is a fifth the size. And the work is still right." |
+| 75.0 to 81.0 | Trust | A Hermes approval card: the brain proposes `rm -rf ./dist`, with Allow once and Deny. The choice waits for you. | "Every command still asks you first." |
+| 81.0 to 88.0 | End card | The god in profile over the poppy field. HYPNOS. "Hermes learns in its sleep." "A Hermes Agent plugin · github.com/0xNoramiya/hypnos". Fade to black. | "Hypnos. Hermes learns in its sleep." |
 
-## Notes
+## Numbers on screen
 
-- If a night is slow, record the hypnogram from a finished night with the night picker on the report page.
-- The numbers above are from the GPU run in the README (Qwen3-0.6B on an A40). A rerun trains differently,
-  so read the real numbers off your own report before recording the voice-over.
-- The badge needs the reply badges setting on (default) and a promoted brain with the family live.
-- Post on X with the caption, tag @NousResearch, and link the repository.
+All from the five-day GPU timelapse in the README (Qwen3-0.6B on one A40, synthetic persona):
+
+- Prompt tokens per turn: 24,636 on day 1, 5,256 on day 5 (21%, "a fifth").
+- Turns answered by the brain on day 5: 81%. Task success: 76% on day 1, 100% on days 2 to 5.
+- Night 2 exam against v1: held-out 67% → 83%, probes 70% → 78%, dreams 60% → 80%; promoted v2.
+- Night 4: rejected, v2 stayed.
+- Sleep pressure after day 1: 78%.
+
+A rerun trains differently. If you rebuild the trailer from another run, take the numbers from its report.
+
+## Recording the live product instead
+
+To show the real Desktop rather than motion graphics, use the `hypnos-demo` profile, which holds the GPU run:
+
+1. `hermes -p hypnos-demo hypnos serve start` to load brain v2, and give the profile a model for the turns
+   the brain does not handle.
+2. In Hermes Desktop, connect to `hypnos-demo` and turn on Hypnos under Capabilities, then Plugins.
+3. Record `/hypnos` (pick night 2 in the hypnogram), then a chat turn such as "Add dayjs to the CLI." with its
+   reply badge, at 1080p in the dark theme. Keep the "synthetic demo data" caption on screen.
+
+Post on X with the trailer, tag @NousResearch, and link the repository.
