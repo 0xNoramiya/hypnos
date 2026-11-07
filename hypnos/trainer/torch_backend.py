@@ -211,9 +211,13 @@ class TorchBackend:
                 chunk = items[start:start + batch_size]
                 texts = [render_prompt(tok, x["messages"], x.get("tools") or []) for x in chunk]
                 enc = tok(texts, return_tensors="pt", padding=True, add_special_tokens=False).to(self.device)
-                gen = self.model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
-                                          output_scores=True, return_dict_in_generate=True,
-                                          pad_token_id=tok.pad_token_id)
+                kwargs = dict(max_new_tokens=max_new_tokens, do_sample=False, output_scores=True,
+                              return_dict_in_generate=True, pad_token_id=tok.pad_token_id)
+                try:
+                    # A tool call is complete at </tool_call>; stopping there saves most of the budget.
+                    gen = self.model.generate(**enc, **kwargs, stop_strings=["</tool_call>"], tokenizer=tok)
+                except (TypeError, ValueError):
+                    gen = self.model.generate(**enc, **kwargs)
                 seqs = gen.sequences[:, enc["input_ids"].shape[1]:]
                 scores = torch.stack(gen.scores, dim=1).float().log_softmax(-1)
                 for i, x in enumerate(chunk):
