@@ -302,9 +302,11 @@ class Timelapse:
 
     def run(self) -> list[dict]:
         summary = []
-        base = time.time() - self.days * 86400
+        # Day N starts at 09:00 local time on its own calendar date, so per-day metrics never split a day.
+        now = time.localtime()
+        midnight = time.mktime((now.tm_year, now.tm_mon, now.tm_mday, 0, 0, 0, 0, 0, -1))
         for day in range(1, self.days + 1):
-            day_start = base + (day - 1) * 86400 + 9 * 3600
+            day_start = midnight - (self.days - day + 1) * 86400 + 9 * 3600
             stats = self.run_day(day, day_start)
             conn = dbmod.open_db(self.db_path)
             from .signals import sleep_pressure

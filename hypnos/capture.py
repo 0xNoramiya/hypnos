@@ -151,7 +151,7 @@ class Recorder:
             "SELECT turn_count FROM sessions WHERE session_id = ?", (session_id,)).fetchone()[0]
         message = self._scrub_text(_text(d.get("user_message")))
         previous = self.conn.execute(
-            "SELECT id, user_message FROM episodes WHERE session_id = ? ORDER BY turn_index DESC LIMIT 1",
+            "SELECT id, turn_id, user_message FROM episodes WHERE session_id = ? ORDER BY turn_index DESC LIMIT 1",
             (session_id,)).fetchone()
         prev_text = d.get("previous_user_message") or (previous["user_message"] if previous else "")
         verdict = detect(message, self._scrub_text(prev_text)) if previous or prev_text else None
@@ -165,6 +165,9 @@ class Recorder:
             kind = "correction" if verdict.is_correction else "reask"
             self._signal(kind, ts=ts, session_id=session_id, episode_id=previous["id"],
                          confidence=verdict.confidence, detail=", ".join(verdict.matched)[:200])
+            if verdict.is_correction:
+                # A correction of a brain answer sends that family back to shadow until it earns trust again.
+                self.demote_turn(previous["turn_id"], "corrected by the user")
         self._touch(ts)
 
     def _ensure_step(self, episode_id: int, tool_call_id: str, tool_name: str, args: Any, ts: float):
@@ -251,6 +254,8 @@ class Recorder:
         self.conn.execute("DELETE FROM signals WHERE step_id = ? AND kind = 'approval_denied'", (step_id,))
         if kind:
             self._signal(kind, ts=ts, session_id=episode["session_id"], episode_id=episode["id"], step_id=step_id)
+        if approval in ("denied", "smart_denied"):
+            self.demote_turn(episode["turn_id"], "an action it proposed was denied")
 
     def on_turn_end(self, d: dict, ts: float) -> None:
         episode = self._episode(d.get("turn_id") or "")

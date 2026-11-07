@@ -57,6 +57,7 @@ def test_timelapse_learns_and_hands_over(tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM episodes WHERE source != 'synthetic'").fetchone()[0] == 0
     days = webapi.metrics(db_path)["days"]
     assert len(days) == 4 and days[0]["synthetic"]
+    assert [d["turns"] for d in days] == [s["turns"] for s in summary]  # each synthetic day on its own date
     assert days[-1]["avg_prompt_tokens"] < days[0]["avg_prompt_tokens"] / 2
     assert days[-1]["success"] >= days[0]["success"]
     assert any("Night 1: promoted" in line for line in lines)

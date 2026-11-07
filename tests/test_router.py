@@ -2,6 +2,7 @@ import json
 import time
 
 import pytest
+from helpers import Turn
 
 from hypnos import db as dbmod
 from hypnos.capture import Event, Recorder, Writer
@@ -165,6 +166,44 @@ def test_mark_bad_demotes_brain_turn(env):
     rec.apply(Event("mark", "", {"good": False, "session_id": "s"}))
     fam = json.loads(env["conn"].execute("SELECT families_json FROM brains").fetchone()[0])["packages"]
     assert fam["state"] == "shadow"
+
+
+def _live_brain_turn(env):
+    promote(env["conn"], "live")
+    rec = Recorder(dbmod.open_db(env["db_path"]))
+
+    def sink(kind, data):
+        rec.apply(Event(kind, "", data))
+
+    turn = Turn(sink, "s", "Install axios.")
+    out, frontier = run(env, turn_id=turn.turn_id)
+    assert frontier.calls == 0
+    routes(env)
+    return sink, turn
+
+
+def _family(env):
+    return json.loads(env["conn"].execute("SELECT families_json FROM brains").fetchone()[0])["packages"]
+
+
+def test_user_correction_demotes_brain_family(env):
+    sink, _ = _live_brain_turn(env)
+    Turn(sink, "s", "no, use pnpm instead", previous_user_message="Install axios.")
+    fam = _family(env)
+    assert fam["state"] == "shadow" and fam["demoted"] == "corrected by the user"
+
+
+def test_denied_brain_action_demotes_family(env):
+    _, turn = _live_brain_turn(env)
+    turn.terminal("pnpm add axios", approval="deny")
+    fam = _family(env)
+    assert fam["state"] == "shadow" and "denied" in fam["demoted"]
+
+
+def test_follow_up_without_correction_keeps_family_live(env):
+    sink, _ = _live_brain_turn(env)
+    Turn(sink, "s", "Thanks, now run the tests.", previous_user_message="Install axios.")
+    assert _family(env)["state"] == "live"
 
 
 def test_unmastered_family_and_codex_and_cron_pass_through(env):
