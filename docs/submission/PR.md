@@ -50,8 +50,9 @@ forgets a session or a habit exactly by retraining from a clean ancestor.
 - `hermes plugins validate . --install-deps`: passes (security scan safe, desktop surface clean, no core
   override, declared hooks and middleware match).
 - `hermes plugins doctor . --ci`: passes.
-- Tests: 217 passing, including live runs against Hermes v0.23.0 with a scripted model, a real CPU training
-  night, and a brain-proposed destructive command blocked by Hermes approvals.
+- Tests: 224 passing, 1 opt-in trainer test skipped by default. Live runs against Hermes v0.23.0 covered a
+  scripted model, a real CPU training night, and a brain-proposed destructive command blocked by Hermes
+  approvals.
 
 ## Screenshots
 
