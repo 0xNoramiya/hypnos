@@ -34,18 +34,22 @@ before you take the SHA and add their URLs to the entry and `PR.md`.
 
 ## 4. Catalog pull request
 
+Opened: https://github.com/NousResearch/hermes-agent/pull/150800, pinned to
+`0a809b9085fdeaed63fd909b927afcc41de512de`, branch `feat/plugin-catalog-hypnos` on the fork. The steps below
+are how it was made, for the next SHA bump.
+
 ```bash
 SHA=$(git -C ~/hackathon/hypnos rev-parse HEAD)
 cd ~/hackathon
 gh repo fork NousResearch/hermes-agent --clone -- --depth 1
 cd hermes-agent
-git checkout -b plugin-catalog/hypnos
+git checkout -b feat/plugin-catalog-hypnos
 grep -v '^#' ~/hackathon/hypnos/docs/submission/hypnos.yaml | sed "s/<SHA>/$SHA/g" > plugin-catalog/hypnos.yaml
 git add plugin-catalog/hypnos.yaml
-git commit -m "feat(plugin-catalog): add hypnos"
-git push -u origin plugin-catalog/hypnos
+git commit -m "feat(plugin-catalog): add hypnos plugin"
+git push -u origin feat/plugin-catalog-hypnos
 sed "s/<SHA>/$SHA/g" ~/hackathon/hypnos/docs/submission/PR.md > /tmp/hypnos-pr.md
-gh pr create --repo NousResearch/hermes-agent --title "feat(plugin-catalog): add hypnos" --body-file /tmp/hypnos-pr.md
+gh pr create --repo NousResearch/hermes-agent --title "feat(plugin-catalog): add hypnos plugin" --body-file /tmp/hypnos-pr.md
 ```
 
 Before creating the PR, read `/tmp/hypnos-pr.md` once: tick the checklist items that are yours to tick

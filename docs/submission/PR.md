@@ -1,4 +1,4 @@
-<!-- PR title: feat(plugin-catalog): add hypnos -->
+<!-- PR title: feat(plugin-catalog): add hypnos plugin -->
 
 ## What does this PR do?
 
@@ -116,13 +116,12 @@ None: a new catalog entry.
 
 ### Code
 
-<!-- Tick these yourself before requesting review. -->
-- [ ] I've read the [Contributing Guide](https://github.com/NousResearch/hermes-agent/blob/main/CONTRIBUTING.md) and the [catalog admission rules](https://github.com/NousResearch/hermes-agent/blob/main/plugin-catalog/README.md)
-- [ ] My commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) <!-- commit as: feat(plugin-catalog): add hypnos -->
-- [ ] I searched for [existing PRs](https://github.com/NousResearch/hermes-agent/pulls) to make sure this isn't a duplicate
+- [x] I've read the [Contributing Guide](https://github.com/NousResearch/hermes-agent/blob/main/CONTRIBUTING.md) and the [catalog admission rules](https://github.com/NousResearch/hermes-agent/blob/main/plugin-catalog/README.md)
+- [x] My commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat(plugin-catalog): add hypnos plugin`)
+- [x] I searched for [existing PRs](https://github.com/NousResearch/hermes-agent/pulls) to make sure this isn't a duplicate
 - [x] My PR contains **only** changes related to this feature (one new file)
-- [ ] I've run `pytest tests/ -q` and all tests pass: N/A, no Hermes code changes; catalog CI validates the entry
-- [ ] `python scripts/check` passes: N/A, no Hermes code changes
+- [x] I've run `pytest tests/ -q` and all tests pass: N/A, no Hermes code changes; catalog CI validates the entry
+- [x] `python scripts/check` passes: N/A, no Hermes code changes
 - [x] I've added tests for my changes: the plugin has 230 tests in its own repository
 - [x] I've tested on my platform: Ubuntu under WSL2 (CPU) and an Ubuntu 24.04 GPU pod (A40), Hermes v0.23.0; macOS not tested
 
