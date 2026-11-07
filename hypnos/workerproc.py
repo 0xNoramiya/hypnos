@@ -9,7 +9,6 @@ import json
 import os
 import signal
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
@@ -26,7 +25,7 @@ _ENV_PREFIX = ("LC_", "CUDA_", "NVIDIA_", "ROCM_", "HIP_", "HYPNOS_FAKE_")
 INSTALL_HINT = (
     "The trainer needs its own Python with torch. Hypnos never installs packages itself. Run:\n"
     "  uv venv --python 3.12 {venv}\n"
-    "  uv pip install --python {venv}/bin/python -r {root}/pyproject.toml --extra {extra}\n"
+    "  uv pip install --python {venv}/bin/python -r {root}/pyproject.toml --extra {extra} --torch-backend {backend}\n"
     "or point the trainer_python setting at an interpreter that already has torch, transformers and peft.")
 
 
@@ -42,9 +41,12 @@ def resolve_trainer_python(configured: str, data_dir: Path) -> Path | None:
 
 
 def install_hint(data_dir: Path, extra: str = "") -> str:
+    # Macs train with torch on CPU until the MLX backend exists. --torch-backend keeps a CPU-only machine
+    # from downloading the CUDA build of torch that PyPI serves on Linux.
     if not extra:
-        extra = "cuda" if Path("/proc/driver/nvidia").exists() else ("mlx" if sys.platform == "darwin" else "cpu")
-    return INSTALL_HINT.format(venv=data_dir / "trainer", root=PLUGIN_ROOT, extra=extra)
+        extra = "cuda" if Path("/proc/driver/nvidia").exists() else "cpu"
+    backend = "auto" if extra == "cuda" else "cpu"
+    return INSTALL_HINT.format(venv=data_dir / "trainer", root=PLUGIN_ROOT, extra=extra, backend=backend)
 
 
 def worker_env(extra: dict[str, str] | None = None) -> dict[str, str]:

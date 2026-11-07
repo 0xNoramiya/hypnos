@@ -136,7 +136,8 @@ Python environment that Hypnos never installs on its own:
 ```bash
 uv venv --python 3.12 ~/.hermes/plugin-data/hypnos/trainer
 uv pip install --python ~/.hermes/plugin-data/hypnos/trainer/bin/python \
-  -r ~/.hermes/plugins/hypnos/pyproject.toml --extra cuda     # or --extra cpu
+  -r ~/.hermes/plugins/hypnos/pyproject.toml --extra cuda --torch-backend auto
+# CPU only, macOS included: --extra cpu --torch-backend cpu
 ```
 
 REM dreams run in Docker if it is available. To enable the sandbox, pull the pinned image once:

@@ -75,3 +75,11 @@ def test_doctor_uses_the_configured_trainer(tmp_path, monkeypatch, capsys):
     cli.doctor({"trainer_python": str(fake)})
     out = capsys.readouterr().out
     assert f"[ok  ] trainer interpreter: {fake} (torch 2.8.0 True)" in out
+
+
+def test_install_hint_never_suggests_a_torchless_trainer(tmp_path):
+    from hypnos import workerproc
+
+    assert "--extra cpu --torch-backend cpu" in workerproc.install_hint(tmp_path, "cpu")
+    assert "--extra cuda --torch-backend auto" in workerproc.install_hint(tmp_path, "cuda")
+    assert "mlx" not in workerproc.install_hint(tmp_path)  # macOS trains with torch on CPU for now

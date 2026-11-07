@@ -35,7 +35,7 @@ hermes -p hypnos-demo hypnos doctor
 ```bash
 uv venv --python 3.12 ~/.hermes/profiles/hypnos-demo/plugin-data/hypnos/trainer
 uv pip install --python ~/.hermes/profiles/hypnos-demo/plugin-data/hypnos/trainer/bin/python \
-  -r ~/.hermes/profiles/hypnos-demo/plugins/hypnos/pyproject.toml --extra cuda
+  -r ~/.hermes/profiles/hypnos-demo/plugins/hypnos/pyproject.toml --extra cuda --torch-backend auto
 ```
 
 Use the exact paths `doctor` prints; they depend on where the profile lives. Docker is usually not
