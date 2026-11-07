@@ -187,8 +187,8 @@ retrained brain fails, the clean ancestor becomes current. A forgotten habit is 
 
 | Machine | Backend | Base model | A night |
 |---|---|---|---|
-| NVIDIA GPU | `torch` on CUDA (`--extra cuda`) | Qwen/Qwen3-0.6B, or Qwen/Qwen3-1.7B | minutes |
-| CPU only | `torch` on CPU (`--extra cpu`) | `--tiny`: SmolLM2-135M-Instruct | about 10 minutes for a small day |
+| NVIDIA GPU | `torch` on CUDA (`--extra cuda`) | Qwen/Qwen3-0.6B, or Qwen/Qwen3-1.7B | 1 to 3 minutes on an A40 (Qwen3-0.6B) |
+| CPU only | `torch` on CPU (`--extra cpu`) | `--tiny`: SmolLM2-135M-Instruct | 26 to 35 minutes on a laptop CPU |
 | Apple Silicon | `mlx` extra listed, backend not written yet | | |
 
 The trainer uses its own LoRA SFT and DPO loops over transformers and peft, so the same code runs on CPU and
@@ -203,19 +203,59 @@ The demo is synthetic and labeled as such everywhere. Run it in its own profile:
 ```bash
 hermes profile create hypnos-demo
 hermes -p hypnos-demo plugins enable hypnos
-hermes -p hypnos-demo hypnos demo timelapse --days 5 --tiny
+hermes -p hypnos-demo hypnos demo timelapse --days 5          # GPU: Qwen3-0.6B, about 15 minutes
+hermes -p hypnos-demo hypnos demo timelapse --days 5 --tiny   # CPU: SmolLM2-135M, about 2.5 hours
 ```
 
 A scripted developer persona works in a throwaway project. Its model starts with generic habits: npm,
 committing before the tests run, free-form commit messages, pushing to main, deleting a folder outside the
 project. On day one the persona corrects or denies each of them, in English and Indonesian. Every turn goes
 through the real capture hooks and every model call through the real routing middleware, sized like a real
-Hermes request. The nights are real. By the last day the brain answers the turns it has mastered.
+Hermes request. The nights are real. By the last day the brain answers the turns it has mastered. The
+135M `--tiny` brain learns far less than Qwen3-0.6B; the results below show both.
 
 ## Results
 
-Measured on a laptop CPU (Ryzen 5 6600H, WSL2) against Hermes v0.23.0. Every number below comes from a
-real run, not from a mock.
+Every number here comes from a real run against Hermes v0.23.0, not from a mock. The demo data is
+synthetic.
+
+### Five synthetic days on a GPU
+
+Qwen3-0.6B on one NVIDIA A40 (Runpod), `hermes hypnos demo timelapse --days 5`. Runpod containers have no
+Docker, so dreams ran in lucid mode. Prompt tokens per turn add up every model call in the turn: the user's
+model's prompt for calls Hermes sent there, the brain's prompt for calls the brain answered. Success is the
+share of turns with no correction, denial, re-ask or bad mark.
+
+| Day | Turns | Prompt tokens per turn | Answered by the brain | Success |
+|---|---|---|---|---|
+| 1 | 21 | 24,636 | 0% | 76% |
+| 2 | 16 | 21,703 | 12% | 100% |
+| 3 | 16 | 9,667 | 62% | 100% |
+| 4 | 16 | 6,751 | 75% | 100% |
+| 5 | 16 | 5,256 | 81% | 100% |
+
+| Night | Minutes | Held-out next action | Habit probes | Dreams | Verdict |
+|---|---|---|---|---|---|
+| 1 | 1.3 | 50% to 67% (n=6) | 12% to 70% | 13% to 67% | Promoted v1 (lower bound 0.58 vs 0.15), packages family |
+| 2 | 1.9 | 67% to 83% (n=12) | 70% to 78% | 60% to 80% | Promoted v2 (0.70 vs 0.66), git, filesystem and packages, 4 habits consolidated |
+| 3 | 2.2 | 83% to 89% (n=18) | 78% to 80% | 78% to 92% | Rejected: lower bound 0.783, not above v2's 0.787 |
+| 4 | 2.4 | 83% to 83% (n=24) | 78% to 66% | 78% to 62% | Rejected: probes and dreams dropped |
+
+Brain v2 answered days 3 to 5. Night 3's candidate scored higher on every component and was still
+rejected, because promotion needs the 95% lower bound to beat the current brain, and 18 held-out items
+cannot show that. Night 4's candidate regressed and the same gate caught it. Each brain call took 1.0 to
+2.7 s on the A40 (mean 1.7 s) with a mean token log-prob of -0.012. This run also hit a bug, fixed since:
+a bad night cleared the kept brain's consolidated flags, so on days 4 and 5 the brain's prompt still
+carried all five habits, about 70 tokens more per call than it needed.
+
+An earlier run of the same timelapse promoted nights 1, 3 and 4 instead, since training is not
+deterministic. It also found a gap: on day 5 its live git brain answered "Tests are green, commit it now."
+with `pnpm add ora`, and three corrections did not take the family away from it. Since then a correction
+or a denial of a brain answer sends that family back to shadow mode.
+
+### Measurements on a laptop CPU
+
+Ryzen 5 6600H, WSL2.
 
 | What | Result |
 |---|---|
@@ -233,9 +273,6 @@ real run, not from a mock.
 The 10/10 night also shows why the exam needs more than probes: asked to remove a package, the tiny brain
 answered `pnpm add prettier`. That passes the habit check (pnpm) and fails the held-out next-action check,
 which is why promotion pools both.
-
-<!-- GPU timelapse: paste the per-day table printed at the end of
-     `hermes hypnos demo timelapse --days 5` (prompt tokens per turn, brain share, success) here. -->
 
 ## Privacy and disclosures
 
@@ -264,6 +301,7 @@ Everything stays on your machine unless you turn on something that says otherwis
   per-message slot for plugins. Turn it off in settings if you prefer.
 - The Desktop pet only gets speech lines; Desktop does not let plugins change its animation.
 - The demo is synthetic. The scripted persona is not a person.
+- Training is not deterministic. Two GPU runs of the same timelapse promoted different nights.
 
 ## Related work
 

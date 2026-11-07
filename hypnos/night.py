@@ -309,6 +309,9 @@ class Night:
         stale = self.conn.execute("SELECT id FROM nights WHERE status IN ('running', 'cancelling')").fetchall()
         for row in stale:
             self.conn.execute("UPDATE nights SET status = 'interrupted', ended_at = ? WHERE id = ?", (time.time(), row["id"]))
+        # What this night sleeps on, by id rather than by clock: WSL and VM clocks can step backwards.
+        self.signal_mark = self.conn.execute("SELECT COALESCE(MAX(id), 0) FROM signals").fetchone()[0]
+        self.pair_mark = self.conn.execute("SELECT COALESCE(MAX(id), 0) FROM pairs").fetchone()[0]
         cur = self.conn.execute("INSERT INTO nights(started_at, status, trigger, params_json, pid) VALUES(?,?,?,?,?)",
                                 (self.started, "running", cfg.trigger, dbmod.dumps(cfg.__dict__), os.getpid()))
         self.night_id = cur.lastrowid
@@ -407,17 +410,19 @@ class Night:
                         "INSERT OR REPLACE INTO habit_results(habit_id, brain_version, with_text, passes, total, consolidated, "
                         "created_at) VALUES(?,?,0,?,?,?,?)",
                         (habit_id, version, p, t, int(habit_id in decision.consolidated_habits), time.time()))
+                # The baseline's own results from the night it was promoted stay as they are: overwriting them
+                # here would clear the consolidated flags of a brain that stays after a bad night.
                 for habit_id, (p, t) in base_scores.habits.items():
                     self.conn.execute(
-                        "INSERT OR REPLACE INTO habit_results(habit_id, brain_version, with_text, passes, total, consolidated, "
-                        "created_at) VALUES(?,?,0,?,?,0,?)",
+                        "INSERT INTO habit_results(habit_id, brain_version, with_text, passes, total, consolidated, "
+                        "created_at) VALUES(?,?,0,?,?,0,?) ON CONFLICT(habit_id, brain_version, with_text) DO NOTHING",
                         (habit_id, (parent["version"] if parent else 0), p, t, time.time()))
                 if decision.promote:
                     # A bad night learned nothing: its signals keep their sleep pressure for the next night.
                     self.conn.execute("UPDATE signals SET consolidated_night = ? WHERE consolidated_night IS NULL "
-                                      "AND created_at <= ?", (self.night_id, self.started))
-                    self.conn.execute("UPDATE pairs SET night_id = ? WHERE night_id IS NULL AND created_at <= ?",
-                                      (self.night_id, self.started))
+                                      "AND id <= ?", (self.night_id, self.signal_mark))
+                    self.conn.execute("UPDATE pairs SET night_id = ? WHERE night_id IS NULL AND id <= ?",
+                                      (self.night_id, self.pair_mark))
                 self.conn.execute("COMMIT")
             except Exception:
                 self.conn.execute("ROLLBACK")

@@ -119,6 +119,20 @@ def test_bad_night_keeps_previous_brain(tmp_path, monkeypatch):
     assert build_report(conn, 1, 1)["habits_consolidated"] == []
 
 
+def test_bad_night_reports_the_habits_the_kept_brain_holds(tmp_path, monkeypatch):
+    night, _ = make_night(tmp_path)
+    night.run()
+    monkeypatch.setenv("HYPNOS_FAKE_POLICY", "garbage")
+    report = Night(night.db_path, tmp_path, night.cfg).run()
+    assert not report["promoted"] and report["kept_version"] == 1
+    conn = dbmod.open_db(night.db_path)
+    flags = conn.execute("SELECT consolidated FROM habit_results WHERE brain_version = 1 AND with_text = 0").fetchall()
+    assert [f[0] for f in flags] == [1]  # the router keeps pruning what v1 consolidated
+    assert [h["statement"] for h in report["habits_consolidated"]] == ["Use pnpm for packages and scripts, never npm or yarn or bun."]
+    assert report["pruned_tokens"] > 0
+    assert "Still in the weights of v1 (1), pruned from its prompt:" in render_report(report)
+
+
 def test_worker_failure_is_reported(tmp_path, monkeypatch):
     monkeypatch.setenv("HYPNOS_FAKE_FAIL", "1")
     night, _ = make_night(tmp_path)

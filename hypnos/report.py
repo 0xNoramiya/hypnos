@@ -44,8 +44,16 @@ def build_report(conn, night_id: int, version: int | None) -> dict:
     training = minutes.get("N3", 0) + minutes.get("REM", 0)
     cycles = max([e["cycle"] or 0 for e in events] or [0])
     habits = conn.execute("SELECT id, statement, family FROM habits WHERE status = 'active' AND excluded = 0").fetchall()
-    # Habits only move into the weights when the brain that learned them is promoted.
-    consolidated_ids = set(decision.get("consolidated", [])) if decision.get("promote") else set()
+    # Habits only move into the weights when the brain that learned them is promoted. After a bad night the
+    # previous brain stays, so the report shows the habits that brain already holds.
+    kept_version = None
+    if decision.get("promote"):
+        consolidated_ids = set(decision.get("consolidated", []))
+    else:
+        kept_version = brain["parent_version"] if brain else None
+        consolidated_ids = {r[0] for r in conn.execute(
+            "SELECT habit_id FROM habit_results WHERE brain_version = ? AND with_text = 0 AND consolidated = 1",
+            (kept_version,))} if kept_version else set()
     consolidated = [h for h in habits if h["id"] in consolidated_ids]
     awake = [h for h in habits if h["id"] not in consolidated_ids]
     frontier = conn.execute("SELECT AVG(frontier_prompt_tokens) FROM routes WHERE frontier_prompt_tokens > 0").fetchone()[0]
@@ -77,6 +85,7 @@ def build_report(conn, night_id: int, version: int | None) -> dict:
         "sleep_efficiency": round(training / total_min, 3) if total_min else 0.0,
         "nightmares": found, "nightmares_resolved": resolved,
         "habits_consolidated": [{"id": h["id"], "statement": h["statement"]} for h in consolidated],
+        "kept_version": kept_version,
         "habits_awake": [{"id": h["id"], "statement": h["statement"]} for h in awake],
         "frontier_prompt_tokens": frontier_tokens,
         "brain_prompt_tokens": pruned_brain,
@@ -139,7 +148,11 @@ def render_report(r: dict) -> str:
     lines.append(f"  primary, lower bound  {_pct(cand.get('primary_lower'))}  vs baseline {_pct(base.get('primary'))}")
     lines.append("")
     if r["habits_consolidated"]:
-        lines.append(f"Consolidated into the weights ({len(r['habits_consolidated'])}), pruned from the brain's prompt:")
+        if r.get("promoted") or not r.get("kept_version"):
+            lines.append(f"Consolidated into the weights ({len(r['habits_consolidated'])}), pruned from the brain's prompt:")
+        else:
+            lines.append(f"Still in the weights of v{r['kept_version']} ({len(r['habits_consolidated'])}), "
+                         "pruned from its prompt:")
         lines += [f"  + {h['statement']}" for h in r["habits_consolidated"]]
     if r["habits_awake"]:
         lines.append(f"Still learning ({len(r['habits_awake'])}), kept as text:")

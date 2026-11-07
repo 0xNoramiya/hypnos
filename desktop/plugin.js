@@ -392,7 +392,9 @@ function Report({ ctx }) {
           h('div', null, 'Valid outputs'), h(Delta, { before: exam.baseline.validity, after: exam.candidate.validity }),
           h('div', null, 'REM'), h('div', null, r.rem_mode === 'sandbox' ? 'Docker sandbox, no network' : `lucid, no execution${r.rem_mode_reason ? ` (${r.rem_mode_reason})` : ''}`)),
         (r.habits_consolidated || []).length ? h('div', { style: { display: 'grid', gap: 4 } },
-          h('div', { style: { fontSize: 12, color: 'var(--ui-text-tertiary)' } }, 'Consolidated into the weights, pruned from the brain prompt'),
+          h('div', { style: { fontSize: 12, color: 'var(--ui-text-tertiary)' } }, r.promoted || !r.kept_version
+            ? 'Consolidated into the weights, pruned from the brain prompt'
+            : `Still in the weights of v${r.kept_version}, pruned from its prompt`),
           r.habits_consolidated.map(x => h('div', { key: `hc${x.id}`, style: { fontSize: 13, color: 'var(--ui-text-primary)' } },
             h('span', { style: { color: 'var(--ui-green)', marginRight: 6 } }, '+'), x.statement))) : null,
         (r.habits_awake || []).length ? h('div', { style: { display: 'grid', gap: 4 } },
