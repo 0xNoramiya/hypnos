@@ -65,6 +65,11 @@ def register(ctx: Any) -> None:
 
     def brain_command(raw_args: str = "", **_: Any) -> str:
         try:
+            words = (raw_args or "").split()
+            if words[:1] == ["rollback"] and len(words) == 2 and words[1].lstrip("v").isdigit():
+                message, brain = sleepcmd.rollback(hermes.db_path(), int(words[1].lstrip("v")))
+                sleepcmd.sync_server(hermes.data_dir(), brain, settings())
+                return message
             return sleepcmd.brain_list_text(hermes.db_path())
         except Exception as exc:
             return f"Hypnos hit an error: {exc}"
@@ -74,7 +79,7 @@ def register(ctx: Any) -> None:
     ctx.register_command("hypnogram", handler=hypnogram_command, description="Sleep stages of the latest night",
                          args_hint="[night]")
     ctx.register_command("brain", handler=brain_command, description="Hypnos brain versions and lineage",
-                         args_hint="[list]")
+                         args_hint="[list|rollback N]")
 
     from . import cli
     ctx.register_cli_command("hypnos", help="Hypnos: Hermes learns in its sleep",

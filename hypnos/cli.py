@@ -30,7 +30,8 @@ def setup(parser: argparse.ArgumentParser) -> None:
     gram = sub.add_parser("hypnogram", help="Show a night's sleep stages")
     gram.add_argument("night", nargs="?", type=int)
     brain = sub.add_parser("brain", help="Brain versions and lineage")
-    brain.add_argument("action", nargs="?", default="list", choices=["list"])
+    brain.add_argument("action", nargs="?", default="list", choices=["list", "rollback"])
+    brain.add_argument("version", nargs="?", type=int)
     serve = sub.add_parser("serve", help="Start, stop or inspect the local brain server")
     serve.add_argument("action", nargs="?", default="status", choices=["start", "stop", "status"])
     mark = sub.add_parser("mark", help="Mark the last reply good or bad")
@@ -73,8 +74,16 @@ def run(args: Any, commands: Any) -> int:
         print(hypnogram_text(hermes.db_path(), args.night))
         return 0
     if cmd == "brain":
-        from .sleepcmd import brain_list_text
-        print(brain_list_text(hermes.db_path()))
+        from . import sleepcmd
+        if args.action == "rollback":
+            if args.version is None:
+                print("Usage: hermes hypnos brain rollback VERSION (0 for no brain)")
+                return 2
+            message, target = sleepcmd.rollback(hermes.db_path(), args.version)
+            sleepcmd.sync_server(hermes.data_dir(), target, commands.settings())
+            print(message)
+            return 0
+        print(sleepcmd.brain_list_text(hermes.db_path()))
         return 0
     if cmd == "serve":
         return serve(args.action, commands.settings())

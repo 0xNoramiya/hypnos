@@ -22,7 +22,7 @@ DEFAULT_FRONTIER_TOKENS = 12000
 
 def stage_minutes(events: list) -> dict[str, float]:
     out: dict[str, float] = defaultdict(float)
-    for current, nxt in zip(events, events[1:]):
+    for current, nxt in zip(events, events[1:], strict=False):
         out[current["stage"]] += max(0.0, nxt["ts"] - current["ts"]) / 60
     return {k: round(v, 2) for k, v in out.items()}
 

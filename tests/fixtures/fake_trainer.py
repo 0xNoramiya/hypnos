@@ -36,7 +36,7 @@ def run_evals(when):
     for ev in job.get("evals", []):
         if ev.get("when", "after") != when:
             continue
-        items = [json.loads(l) for l in open(ev["prompts_path"]) if l.strip()]
+        items = [json.loads(line) for line in open(ev["prompts_path"]) if line.strip()]
         emit({"event": "exam_start", "name": ev["name"], "n": len(items)})
         with open(ev["out_path"], "w") as fh:
             for it in items:

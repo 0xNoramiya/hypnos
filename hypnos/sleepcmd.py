@@ -51,6 +51,11 @@ def run_sleep(*, db_path: str, data_dir: Path, memories_dir: Path | None, settin
     except NightError as exc:
         out(f"Hypnos could not sleep: {exc}")
         return 1
+    if report.get("promoted") and report.get("version"):
+        conn = dbmod.open_db(db_path)
+        brain = conn.execute("SELECT * FROM brains WHERE version = ?", (report["version"],)).fetchone()
+        conn.close()
+        sync_server(data_dir, dict(brain) if brain else None, settings)
     out("")
     out(render_report(report))
     return 0
@@ -145,3 +150,44 @@ def brain_list_text(db_path: str) -> str:
         return "\n".join(lines)
     finally:
         conn.close()
+
+
+def rollback(db_path: str, version: int) -> tuple[str, dict | None]:
+    """Make an earlier brain current again (``0`` means no brain). Returns (message, brain to serve)."""
+    conn = dbmod.open_db(db_path)
+    try:
+        current = conn.execute("SELECT * FROM brains WHERE status = 'promoted' ORDER BY version DESC LIMIT 1").fetchone()
+        if version == 0:
+            if current:
+                conn.execute("UPDATE brains SET status = 'retired' WHERE version = ?", (current["version"],))
+            return "Rolled back to no brain. Every turn goes to your normal model.", None
+        target = conn.execute("SELECT * FROM brains WHERE version = ?", (version,)).fetchone()
+        if target is None:
+            return f"There is no brain v{version}.", None
+        if target["status"] == "rejected" or not target["promoted_at"]:
+            return f"Brain v{version} never passed its exam, so it cannot be restored.", None
+        if current and current["version"] == version:
+            return f"Brain v{version} is already current.", dict(target)
+        conn.execute("BEGIN IMMEDIATE")
+        if current:
+            conn.execute("UPDATE brains SET status = 'retired' WHERE version = ?", (current["version"],))
+        conn.execute("UPDATE brains SET status = 'promoted', promoted_at = ? WHERE version = ?", (time.time(), version))
+        conn.execute("COMMIT")
+        was = f" (was v{current['version']})" if current else ""
+        return f"Rolled back to brain v{version}{was}.", dict(target)
+    finally:
+        conn.close()
+
+
+def sync_server(data_dir: Path, brain: dict | None, settings: dict) -> None:
+    """Point a running brain server at ``brain`` (or stop it when there is none). Never starts one."""
+    from . import brainserver
+    if not brainserver.status(data_dir).get("running"):
+        return
+    if brain is None:
+        brainserver.stop(data_dir)
+        return
+    try:
+        brainserver.swap(data_dir, brain["adapter_path"], brain["version"])
+    except Exception:
+        brainserver.stop(data_dir)
