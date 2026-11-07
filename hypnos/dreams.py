@@ -237,8 +237,9 @@ class Dreamer:
         night.event("N2", "dreams_written", dreams=len(rows), teacher_tokens=getattr(self.teacher, "tokens", 0))
         if not rows:
             return
+        offered = ds.latest_offered(conn)
         prompts = [{"id": f"dream:{dream_id}", "messages": build_messages(v.user, v.history, []),
-                    "tools": brain_tools(None, habit["family"] or "shell")} for dream_id, habit, v, _, _ in rows]
+                    "tools": brain_tools(offered, habit["family"] or "shell")} for dream_id, habit, v, _, _ in rows]
         outputs = {o["id"]: o for o in (self._generate(prompts, night) if self._generate else [])}
         nightmares = 0
         for dream_id, habit, variant, kind, checker in rows:
@@ -303,11 +304,12 @@ def dream_exam_items(conn, night_id: int | None, cap: int = 40) -> list[dict]:
         "AND (h.id IS NULL OR (h.excluded = 0 AND h.status = 'active')) ORDER BY (d.night_id = ?) DESC, d.id DESC LIMIT ?",
         (night_id, cap)).fetchall()
     items = []
+    offered = ds.latest_offered(conn)
     for row in rows:
         prompt = dbmod.loads(row["prompt_json"], {})
         items.append({"id": f"dream:{row['id']}", "kind": "dream", "habit_id": row["habit_id"], "family": row["family"],
                       "messages": build_messages(prompt.get("user", ""), prompt.get("history"), []),
-                      "tools": brain_tools(None, row["family"] or "shell"),
+                      "tools": brain_tools(offered, row["family"] or "shell"),
                       "checker": dbmod.loads(row["checker_json"], {})})
     return items
 

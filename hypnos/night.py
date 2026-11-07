@@ -240,6 +240,7 @@ class Night:
             row["kind"] = "heldout"
             exam_items.append(row)
         habit_families = {}
+        offered = ds.latest_offered(self.conn)
         for h in habit_rows:
             habit_families[h["id"]] = h["family"]
             probes = self.conn.execute("SELECT * FROM probes WHERE habit_id = ? AND kind = 'deterministic' ORDER BY id",
@@ -248,7 +249,7 @@ class Night:
                 prompt = dbmod.loads(p["prompt_json"], {})
                 exam_items.append({"id": f"probe:{p['id']}", "kind": "probe", "habit_id": h["id"], "family": h["family"],
                                    "messages": build_messages(prompt.get("user", ""), prompt.get("history"), []),
-                                   "tools": brain_tools(None, h["family"] or "shell"),
+                                   "tools": brain_tools(offered, h["family"] or "shell"),
                                    "checker": dbmod.loads(p["checker_json"], {})})
         if self.dreamer:
             exam_items.extend(self.dreamer.exam_items())

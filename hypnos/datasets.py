@@ -88,6 +88,12 @@ def _toolset(conn: sqlite3.Connection, toolset_hash: str | None) -> list[dict] |
     return dbmod.loads(row["tools_json"], None) if row else None
 
 
+def latest_offered(conn: sqlite3.Connection) -> list[dict] | None:
+    """The tool schemas Hermes offered most recently, so exam and dream prompts match what serving sees."""
+    row = conn.execute("SELECT tools_json FROM toolsets ORDER BY created_at DESC LIMIT 1").fetchone()
+    return dbmod.loads(row["tools_json"], None) if row else None
+
+
 @dataclass
 class Example:
     id: str

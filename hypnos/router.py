@@ -286,6 +286,7 @@ class Router:
         if settings.get("routing", "auto") == "shadow_only" and state == "live":
             state = "shadow"
         return {**base, "mode": "live" if state == "live" else "shadow", "family": family,
+                "tools_raw": list(request.get("tools") or []),
                 "shadow_agree_turns": int(settings.get("shadow_agree_turns") or 5),
                 "routing": settings.get("routing", "auto"),
                 "brain_request": {"messages": messages, "tools": tools, "max_tokens": 256, "temperature": 0,
@@ -400,7 +401,7 @@ class Router:
                 "frontier_prompt_tokens": frontier_prompt_tokens(response, api_mode),
                 "latency_ms": (time.perf_counter() - started) * 1000,
                 "fallback_reason": (plan or {}).get("reason"),
-                "tools": list(request.get("tools") or []) if (kw.get("api_call_count") or 1) <= 1 else None}))
+                "tools": list(request.get("tools") or [])}))
         except Exception:
             log.debug("hypnos: route record failed", exc_info=True)
 
@@ -416,6 +417,7 @@ class Router:
                 "brain_prompt_tokens": brain_tokens, "tokens_saved": saved, "pruned_tokens": plan.get("pruned_tokens", 0),
                 "latency_ms": (time.perf_counter() - started) * 1000, "brain_latency_ms": info.get("latency_ms"),
                 "agreed": agreed, "confidence": info.get("confidence"), "fallback_reason": fallback_reason or None,
-                "shadow_agree_turns": plan.get("shadow_agree_turns"), "routing": plan.get("routing")}))
+                "shadow_agree_turns": plan.get("shadow_agree_turns"), "routing": plan.get("routing"),
+                "tools": plan.get("tools_raw")}))
         except Exception:
             log.debug("hypnos: route record failed", exc_info=True)

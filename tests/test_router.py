@@ -242,3 +242,12 @@ def test_endpoint_without_logprobs_needs_two_agreeing_samples(env):
     env["router"]._brain = no_logprobs
     out, frontier = run(env)
     assert frontier.calls == 1 and "disagreed" in routes(env)[-1]["fallback_reason"]
+
+
+def test_shadow_calls_also_record_the_offered_tools(env):
+    promote(env["conn"], "shadow")
+    env["conn"].execute("INSERT INTO episodes(turn_id, session_id, turn_index, started_at) VALUES('t1','s',1,0)")
+    run(env, turn_id="t1")
+    time.sleep(0.2)
+    routes(env)
+    assert env["conn"].execute("SELECT toolset_hash FROM episodes WHERE turn_id = 't1'").fetchone()[0]
