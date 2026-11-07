@@ -13,6 +13,7 @@ DEFAULTS: dict[str, Any] = {
     "enabled": True,
     "exclude_platforms": ["cron"],
     "capture_subagents": False,
+    "inject_habits": True,
     "pressure_scale": 25.0,
     "retention_days": 90,
 }

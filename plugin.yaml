@@ -41,6 +41,11 @@ config_schema:
     type: bool
     default: false
     label: Learn from subagent turns
+  inject_habits:
+    type: bool
+    default: true
+    label: Remind Hermes of learned habits
+    description: Append the learned habits to each turn's message for your normal model. Not saved to the transcript.
   pressure_scale:
     type: float
     default: 25.0

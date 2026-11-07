@@ -15,6 +15,8 @@ def setup(parser: argparse.ArgumentParser) -> None:
     sub = parser.add_subparsers(dest="hypnos_cmd")
     sub.add_parser("status", help="Sleep pressure, signals and the current brain")
     sub.add_parser("doctor", help="Check Hypnos's environment and print fixes")
+    habits = sub.add_parser("habits", help="Show the habit ledger")
+    habits.add_argument("action", nargs="?", choices=["refresh"])
     mark = sub.add_parser("mark", help="Mark the last reply good or bad")
     mark.add_argument("verdict", choices=["good", "bad"])
     mark.add_argument("note", nargs="*")
@@ -28,6 +30,9 @@ def run(args: Any, commands: Any) -> int:
     if cmd == "doctor":
         ok = doctor()
         return 0 if ok else 1
+    if cmd == "habits":
+        print(commands.hypnos("habits " + (args.action or "")))
+        return 0
     if cmd == "mark":
         print(commands.hypnos(f"{args.verdict} {' '.join(args.note or [])}"))
         commands.flush()

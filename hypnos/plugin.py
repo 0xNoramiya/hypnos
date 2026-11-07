@@ -32,7 +32,8 @@ def register(ctx: Any) -> None:
         ctx.register_hook(name, callback)
 
     commands = Commands(db_path=hermes.db_path, settings=settings, set_config=ctx.set_config,
-                        mark=capture.mark, flush=lambda: writer.flush(1.0))
+                        mark=capture.mark, flush=lambda: writer.flush(1.0), memories_dir=hermes.memories_dir,
+                        on_habits_changed=capture.injector.invalidate)
 
     def hypnos_command(raw_args: str = "", session_id: str = "", **_: Any) -> str:
         try:
@@ -43,7 +44,7 @@ def register(ctx: Any) -> None:
 
     ctx.register_command("hypnos", handler=hypnos_command,
                          description="Hypnos status, on/off, and good/bad marks",
-                         args_hint="[status|on|off|good|bad|help]")
+                         args_hint="[status|habits|on|off|good|bad|help]")
 
     from . import cli
     ctx.register_cli_command("hypnos", help="Hypnos: Hermes learns in its sleep",

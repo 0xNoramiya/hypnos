@@ -204,3 +204,25 @@ def test_hook_latency_p95_under_5ms(tmp_path):
     p95 = timings[int(len(timings) * 0.95)]
     assert p95 < 0.005, f"p95 {p95 * 1000:.2f} ms"
     assert writer.flush(30)
+
+
+def test_correction_creates_habit_and_next_turn_gets_habit_block(tmp_path):
+    cap, writer = _capture(tmp_path)
+    ok = json.dumps({"output": "ok", "exit_code": 0, "error": None})
+    history = [{"role": "user", "content": "add lodash"}]
+    assert cap.on_pre_llm_call(session_id="s", turn_id="t1", user_message="add lodash",
+                               conversation_history=history, platform="cli") is None
+    cap.on_post_tool_call(turn_id="t1", tool_call_id="c1", tool_name="terminal",
+                          args={"command": "npm install lodash"}, result=ok)
+    cap.on_post_llm_call(turn_id="t1", assistant_response="done", conversation_history=history)
+    history2 = history + [{"role": "assistant", "content": "done"}, {"role": "user", "content": "no, use pnpm instead"}]
+    cap.on_pre_llm_call(session_id="s", turn_id="t2", user_message="no, use pnpm instead",
+                        conversation_history=history2, platform="cli")
+    cap.on_post_tool_call(turn_id="t2", tool_call_id="c2", tool_name="terminal",
+                          args={"command": "pnpm add lodash"}, result=ok)
+    cap.on_post_llm_call(turn_id="t2", assistant_response="done", conversation_history=history2)
+    assert writer.flush(5)
+    block = cap.on_pre_llm_call(session_id="s", turn_id="t3", user_message="add zod", platform="cli")
+    assert block and "Use pnpm for packages and scripts, never npm" in block
+    cap._settings.values["inject_habits"] = False
+    assert cap.on_pre_llm_call(session_id="s", turn_id="t4", user_message="add zod", platform="cli") is None

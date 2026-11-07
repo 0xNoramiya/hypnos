@@ -10,12 +10,15 @@ from typing import Any, Callable
 
 from . import __version__
 from . import db as dbmod
+from .habits import refresh as refresh_habits
 from .signals import sleep_pressure
 
 HYPNOS_HELP = """Hypnos learns your habits while Hermes sleeps.
 
   /hypnos status        sleep pressure, today's signals, current brain
   /hypnos on | off      start or stop capture and routing
+  /hypnos habits        the habit ledger and what each brain has consolidated
+  /hypnos habits refresh   re-read pairs, repeats and MEMORY.md / USER.md
   /hypnos good [note]   mark the last reply as good
   /hypnos bad [note]    mark the last reply as bad
 """
@@ -90,6 +93,30 @@ def collect_status(conn, settings: dict) -> Status:
     )
 
 
+def render_habits(conn) -> str:
+    rows = conn.execute(
+        "SELECT h.*, (SELECT COUNT(*) FROM probes p WHERE p.habit_id = h.id) AS n_probes, "
+        "(SELECT COUNT(*) FROM probes p WHERE p.habit_id = h.id AND p.kind = 'judged') AS n_judged "
+        "FROM habits h WHERE h.excluded = 0 ORDER BY h.id").fetchall()
+    if not rows:
+        return ("No habits yet. Hypnos learns them from your corrections and denials, from patterns you repeat, "
+                "and from preference lines in MEMORY.md and USER.md.")
+    brain = conn.execute("SELECT MAX(version) FROM brains WHERE status = 'promoted'").fetchone()[0]
+    lines = [f"Habits ({len(rows)})" + (f", brain v{brain}" if brain else "")]
+    for h in rows:
+        evidence = len(dbmod.loads(h["evidence_json"], []))
+        state = "awake"
+        if brain:
+            res = conn.execute("SELECT passes, total, consolidated FROM habit_results WHERE habit_id = ? "
+                               "AND brain_version = ? AND with_text = 0", (h["id"], brain)).fetchone()
+            if res:
+                state = f"{'consolidated' if res['consolidated'] else 'learning'} {res['passes']}/{res['total']}"
+        probe_note = f"{h['n_probes']} probes" + (f" ({h['n_judged']} judged)" if h["n_judged"] else "")
+        lines.append(f"  #{h['id']:<3} {h['statement']}")
+        lines.append(f"       {h['source']}, {_plural(evidence, 'episode')} of evidence, {probe_note}, {state}")
+    return "\n".join(lines)
+
+
 def render_status(st: Status) -> str:
     c = st.counts
     lines = [f"Hypnos {__version__}  {'capture on' if st.enabled else 'off (run /hypnos on)'}"]
@@ -119,7 +146,10 @@ def render_status(st: Status) -> str:
 class Commands:
     def __init__(self, *, db_path: Callable[[], str], settings: Callable[[], dict],
                  set_config: Callable[[str, Any], None], mark: Callable[[bool, str, str], None],
-                 flush: Callable[[], Any] = lambda: None):
+                 flush: Callable[[], Any] = lambda: None, memories_dir: Callable[[], Path | None] = lambda: None,
+                 on_habits_changed: Callable[[], Any] = lambda: None):
+        self.memories_dir = memories_dir
+        self.on_habits_changed = on_habits_changed
         self.db_path = db_path
         self.settings = settings
         self.set_config = set_config
@@ -158,6 +188,19 @@ class Commands:
                 invalidate()
             return "Hypnos is on. Capture and routing resume." if sub == "on" else (
                 "Hypnos is off. Nothing is captured and every turn goes to your normal model.")
+        if sub == "habits":
+            self.flush()
+            conn = self._conn()
+            try:
+                note = ""
+                if rest.strip().lower() == "refresh":
+                    result = refresh_habits(conn, self.memories_dir())
+                    self.on_habits_changed()
+                    note = (f"Refreshed: {len(result.created)} new, {len(result.updated)} updated, "
+                            f"{result.skipped_declarative} declarative memory lines left in text memory.\n\n")
+                return note + render_habits(conn)
+            finally:
+                conn.close()
         if sub in ("good", "bad"):
             self.mark(sub == "good", session_id, rest)
             return f"Marked the last reply as {sub}." + (" It counts toward tonight's sleep." if sub == "bad" else "")

@@ -42,6 +42,11 @@ def db_path() -> str:
     return str(data_dir() / "data.db")
 
 
+def memories_dir() -> Path:
+    """Where Hermes keeps MEMORY.md and USER.md. Hypnos only ever reads these files."""
+    return Path(hermes_home()) / "memories"
+
+
 def secret(name: str) -> str:
     """Read one of Hypnos's own declared secrets through Hermes. Never reads files."""
     try:

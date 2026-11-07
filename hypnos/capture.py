@@ -19,6 +19,8 @@ from typing import Any, Callable
 
 from . import db as dbmod
 from .correction import detect
+from .habits import habit_block
+from .habits import refresh as refresh_habits
 from .outcomes import parse_tool_result
 from .scrub import scrub, scrub_text
 from .signals import APPROVED_CHOICES, DENIED_CHOICES, GOLD_THRESHOLD, SMART_DENIED, pair_confidence, signal_weight
@@ -277,7 +279,15 @@ class Recorder:
             "UPDATE episodes SET status = 'ok', ended_at = ?, assistant_text = ? WHERE id = ?",
             (ts, self._scrub_text(text), episode["id"]))
         self._match_pairs(episode, ts)
+        self._refresh_habits_if_needed()
         self._touch(ts)
+
+    def _refresh_habits_if_needed(self) -> None:
+        if getattr(self, "_new_pairs", False):
+            self._new_pairs = False
+            result = refresh_habits(self.conn, None, own_transaction=False)
+            if result.created or result.updated:
+                self.habits_changed = True
 
     def on_turn_close(self, d: dict, ts: float) -> None:
         episode = self._episode(d.get("turn_id") or "")
@@ -287,6 +297,7 @@ class Recorder:
         self.conn.execute("UPDATE episodes SET status = ?, ended_at = ? WHERE id = ?", (status, ts, episode["id"]))
         if status == "ok":
             self._match_pairs(episode, ts)
+            self._refresh_habits_if_needed()
 
     def on_link(self, d: dict, ts: float) -> None:
         old, new = d.get("old_session_id") or "", d.get("session_id") or ""
@@ -339,6 +350,7 @@ class Recorder:
              dbmod.dumps(self._action(rejected)), chosen["id"], rejected["id"], confidence, gold, detail))
         self._signal("gold_pair" if gold else "pair", ts=ts, session_id=episode["session_id"],
                      episode_id=context_episode, step_id=rejected["id"], confidence=confidence, detail=source)
+        self._new_pairs = True
 
     def _match_pairs(self, episode, ts: float) -> None:
         """Pair denied or corrected actions with the accepted action that replaced them."""
@@ -401,7 +413,9 @@ class Recorder:
 class Writer:
     """Single background thread that drains the queue into the right database."""
 
-    def __init__(self, literals: Callable[[], tuple[str, ...]] = lambda: ()):
+    def __init__(self, literals: Callable[[], tuple[str, ...]] = lambda: (),
+                 on_habits_changed: Callable[[], Any] = lambda: None):
+        self.on_habits_changed = on_habits_changed
         self.queue: queue.Queue[Event | None] = queue.Queue(maxsize=10000)
         self._literals = literals
         self._recorders: dict[str, Recorder] = {}
@@ -436,7 +450,11 @@ class Writer:
 
     def process(self, event: Event) -> None:
         try:
-            self.recorder(event.db_path).apply(event)
+            rec = self.recorder(event.db_path)
+            rec.apply(event)
+            if getattr(rec, "habits_changed", False):
+                rec.habits_changed = False
+                self.on_habits_changed()
         except Exception:
             self.errors += 1
             log.warning("hypnos: failed to record %s event", event.kind, exc_info=True)
@@ -461,6 +479,38 @@ class Writer:
         return True
 
 
+class HabitInjector:
+    """Serves the habits block to ``pre_llm_call`` from a short-lived cache, so the hook stays fast."""
+
+    def __init__(self, ttl: float = 15.0):
+        self.ttl = ttl
+        self._cache: dict[str, tuple[float, str]] = {}
+        self._lock = threading.Lock()
+
+    def block(self, db_path: str) -> str:
+        hit = self._cache.get(db_path)
+        if hit and time.monotonic() - hit[0] < self.ttl:
+            return hit[1]
+        text = ""
+        if os.path.exists(db_path):
+            conn = dbmod.connect(db_path, readonly=True)
+            try:
+                rows = conn.execute(
+                    "SELECT statement FROM habits WHERE status = 'active' AND excluded = 0 ORDER BY id").fetchall()
+                text = habit_block([r["statement"] for r in rows])
+            except Exception:
+                text = ""
+            finally:
+                conn.close()
+        with self._lock:
+            self._cache[db_path] = (time.monotonic(), text)
+        return text
+
+    def invalidate(self) -> None:
+        with self._lock:
+            self._cache.clear()
+
+
 def _trace(name: str, kwargs: dict) -> None:
     """Opt-in debugging: ``HYPNOS_TRACE=/path/file`` appends one line per hook call (field names only)."""
     path = os.environ.get("HYPNOS_TRACE")
@@ -476,10 +526,13 @@ def _trace(name: str, kwargs: dict) -> None:
 class Capture:
     """Hook callbacks. Each one is cheap, fail-open and accepts ``**kwargs``."""
 
-    def __init__(self, *, db_path: Callable[[], str], settings: Callable[[], dict], writer: Writer):
+    def __init__(self, *, db_path: Callable[[], str], settings: Callable[[], dict], writer: Writer,
+                 injector: HabitInjector | None = None):
         self._db_path = db_path
         self._settings = settings
         self.writer = writer
+        self.injector = injector or HabitInjector()
+        self.writer.on_habits_changed = self.injector.invalidate
 
     def _active(self, platform: str = "", parent_session_id: str = "") -> dict | None:
         settings = self._settings()
@@ -506,13 +559,15 @@ class Capture:
             "on_session_delete": self.on_session_delete,
         }
 
-    def on_pre_llm_call(self, **kwargs: Any) -> None:
+    def on_pre_llm_call(self, **kwargs: Any) -> str | None:
         _trace("on_pre_llm_call", kwargs)
         try:
-            if self._active(kwargs.get("platform") or "", kwargs.get("parent_session_id") or "") is None:
+            settings = self._active(kwargs.get("platform") or "", kwargs.get("parent_session_id") or "")
+            if settings is None:
                 return None
             history = kwargs.get("conversation_history") or []
-            self._emit("turn_start", {
+            db_path = self._db_path()
+            self.writer.put(Event("turn_start", db_path, {
                 "session_id": kwargs.get("session_id") or "",
                 "turn_id": kwargs.get("turn_id") or "",
                 "user_message": kwargs.get("user_message"),
@@ -520,7 +575,9 @@ class Capture:
                 "platform": kwargs.get("platform") or "",
                 "model": kwargs.get("model") or "",
                 "parent_session_id": kwargs.get("parent_session_id") or "",
-            })
+            }))
+            if settings.get("inject_habits", True):
+                return self.injector.block(db_path) or None
         except Exception:
             log.debug("hypnos: pre_llm_call capture failed", exc_info=True)
         return None
