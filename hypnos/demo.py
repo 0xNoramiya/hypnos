@@ -16,9 +16,9 @@ import json
 import random
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from . import brainfmt
 from . import db as dbmod

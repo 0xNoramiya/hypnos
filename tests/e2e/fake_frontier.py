@@ -15,12 +15,13 @@ import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import ClassVar
 
 LOCK = threading.Lock()
 
 
 class State:
-    script: list = []
+    script: ClassVar[list] = []
     log_path: str = ""
 
 

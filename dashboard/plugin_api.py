@@ -17,6 +17,7 @@ path under a private module name. Every route resolves the active profile at cal
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import importlib.util
 import sys
@@ -46,13 +47,11 @@ def _core(module: str):
 
 def _settings() -> dict:
     defaults = dict(_core("config").DEFAULTS)
-    try:
+    with contextlib.suppress(Exception):  # an unreadable config leaves the defaults in place
         from hermes_cli.config import load_config_readonly
         cfg = load_config_readonly() or {}
         values = (((cfg.get("plugins") or {}).get("entries") or {}).get("hypnos") or {}).get("settings") or {}
         defaults.update({k: v for k, v in values.items() if v is not None})
-    except Exception:
-        pass
     return defaults
 
 
@@ -67,7 +66,7 @@ def get_status() -> dict:
 
 
 @router.get("/night")
-def get_night(id: int | None = None) -> dict:  # noqa: A002 (query name)
+def get_night(id: int | None = None) -> dict:  # `id` is the query parameter's name
     return _core("webapi").night(_paths()[0], id)
 
 
@@ -77,7 +76,7 @@ def get_nights() -> list:
 
 
 @router.get("/report")
-def get_report(id: int | None = None) -> dict:  # noqa: A002
+def get_report(id: int | None = None) -> dict:  # `id` is the query parameter's name
     return _core("webapi").report(_paths()[0], id)
 
 

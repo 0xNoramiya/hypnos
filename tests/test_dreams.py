@@ -74,7 +74,7 @@ def _night_with_dreamer(tmp_path, generate=None, use_sandbox=False):
 
 
 def test_night_dreams_nightmares_and_resolution(tmp_path):
-    night, dreamer = _night_with_dreamer(tmp_path)
+    night, _dreamer = _night_with_dreamer(tmp_path)
     report = night.run()
     conn = night.conn
     dreams = conn.execute("SELECT * FROM dreams").fetchall()
@@ -107,7 +107,7 @@ def test_chatty_nightmare_is_contrasted_with_the_violation(tmp_path):
 
 
 def test_dreams_are_regression_items_next_night(tmp_path):
-    night, dreamer = _night_with_dreamer(tmp_path)
+    night, _dreamer = _night_with_dreamer(tmp_path)
     night.run()
     night2 = Night(night.db_path, tmp_path, night.cfg, dreamer=Dreamer(ScriptedTeacher(seed=4), k=2, use_sandbox=False))
     night2.run()

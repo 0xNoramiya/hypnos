@@ -14,8 +14,9 @@ import os
 import queue
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from . import db as dbmod
 from .correction import detect
@@ -556,7 +557,7 @@ class Writer:
             payload = {"turn_id": event.data.get("turn_id")} if name == "turn.tagged" else {}
             self.broadcast(name, payload)
         except Exception:
-            pass
+            log.debug("Desktop broadcast %s failed", name, exc_info=True)
 
     def _run(self) -> None:
         while True:
@@ -687,7 +688,7 @@ class Capture:
         _trace("on_post_tool_call", kwargs)
         try:
             if self._active() is None:
-                return None
+                return
             args = kwargs.get("args")
             self._emit("tool", {
                 "turn_id": kwargs.get("turn_id") or "",
@@ -701,13 +702,13 @@ class Capture:
             })
         except Exception:
             log.debug("hypnos: post_tool_call capture failed", exc_info=True)
-        return None
+        return
 
     def on_post_approval_response(self, **kwargs: Any) -> None:
         _trace("on_post_approval_response", kwargs)
         try:
             if self._active() is None:
-                return None
+                return
             self._emit("approval", {
                 "tool_call_id": kwargs.get("tool_call_id") or "",
                 "turn_id": kwargs.get("turn_id") or "",
@@ -716,13 +717,13 @@ class Capture:
             })
         except Exception:
             log.debug("hypnos: approval capture failed", exc_info=True)
-        return None
+        return
 
     def on_post_llm_call(self, **kwargs: Any) -> None:
         _trace("on_post_llm_call", kwargs)
         try:
             if self._active(kwargs.get("platform") or "") is None:
-                return None
+                return
             self._emit("turn_end", {
                 "turn_id": kwargs.get("turn_id") or "",
                 "assistant_response": kwargs.get("assistant_response"),
@@ -730,13 +731,13 @@ class Capture:
             })
         except Exception:
             log.debug("hypnos: post_llm_call capture failed", exc_info=True)
-        return None
+        return
 
     def on_session_end(self, **kwargs: Any) -> None:
         _trace("on_session_end", kwargs)
         try:
             if self._active() is None or not kwargs.get("turn_id"):
-                return None
+                return
             self._emit("turn_close", {
                 "turn_id": kwargs.get("turn_id") or "",
                 "completed": bool(kwargs.get("completed")),
@@ -745,7 +746,7 @@ class Capture:
             })
         except Exception:
             log.debug("hypnos: on_session_end capture failed", exc_info=True)
-        return None
+        return
 
     def on_session_finalize(self, **kwargs: Any) -> None:
         _trace("on_session_finalize", kwargs)
@@ -753,7 +754,6 @@ class Capture:
             self.writer.flush(timeout=2.0)
         except Exception:
             log.debug("hypnos: flush failed", exc_info=True)
-        return None
 
     def on_post_compaction(self, **kwargs: Any) -> None:
         _trace("on_post_compaction", kwargs)
@@ -762,7 +762,6 @@ class Capture:
                 self._emit("link", {"old_session_id": kwargs["old_session_id"], "session_id": kwargs["session_id"]})
         except Exception:
             log.debug("hypnos: post_compaction capture failed", exc_info=True)
-        return None
 
     def on_session_delete(self, **kwargs: Any) -> None:
         _trace("on_session_delete", kwargs)
@@ -774,7 +773,6 @@ class Capture:
                 self._emit("purge", {"session_ids": ids})
         except Exception:
             log.debug("hypnos: on_session_delete capture failed", exc_info=True)
-        return None
 
     def on_transform_llm_output(self, **kwargs: Any) -> str | None:
         """Append the Desktop reply badge directive. Desktop only, and only once a brain exists."""

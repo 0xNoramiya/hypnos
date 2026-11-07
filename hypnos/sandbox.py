@@ -68,10 +68,12 @@ def available() -> tuple[bool, str]:
     if not docker:
         return False, "docker is not installed"
     try:
-        info = subprocess.run([docker, "info", "--format", "{{.ServerVersion}}"], capture_output=True, text=True, timeout=10)
+        info = subprocess.run([docker, "info", "--format", "{{.ServerVersion}}"], capture_output=True, text=True,
+                              timeout=10, check=False)
         if info.returncode != 0:
             return False, "the docker daemon is not running"
-        image = subprocess.run([docker, "image", "inspect", IMAGE], capture_output=True, text=True, timeout=10)
+        image = subprocess.run([docker, "image", "inspect", IMAGE], capture_output=True, text=True, timeout=10,
+                               check=False)
         if image.returncode != 0:
             return False, f"the sandbox image is not present (run: {PULL_HINT})"
     except (OSError, subprocess.SubprocessError) as exc:
@@ -93,7 +95,7 @@ def run(command: str, *, timeout: float = 30.0) -> SandboxResult:
             "--tmpfs", "/work:rw,exec,size=64m,uid=1000,gid=1000", "--tmpfs", "/tmp:rw,size=16m",
             "--user", "1000:1000", "-e", "HOME=/work/home", "-w", "/work", "--entrypoint", "sh", IMAGE, "-s"]
     try:
-        proc = subprocess.run(args, input=script, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(args, input=script, capture_output=True, text=True, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
         return SandboxResult(124, "timed out", {}, True)
     except OSError as exc:

@@ -244,7 +244,7 @@ def export_cmd(args: Any) -> int:
             print("The hf CLI is not installed; upload the folder yourself.")
             return 1
         print(f"Uploading with your own hf login: hf upload {args.push_to_hub} {out}")
-        return subprocess.run([hf, "upload", args.push_to_hub, str(out)]).returncode
+        return subprocess.run([hf, "upload", args.push_to_hub, str(out)], check=False).returncode
     return 0
 
 
@@ -360,8 +360,9 @@ def doctor(settings: dict | None = None) -> bool:
     detail = "not found"
     if python:
         try:
-            probe = subprocess.run([str(python), "-c", "import torch, transformers, peft; print(torch.__version__, "
-                                    "torch.cuda.is_available())"], capture_output=True, text=True, timeout=120)
+            probe = subprocess.run([str(python), "-c", ("import torch, transformers, peft; print(torch.__version__, "
+                                    "torch.cuda.is_available())")], capture_output=True, text=True, timeout=120,
+                                   check=False)
             trainer_ok = probe.returncode == 0
             detail = f"{python} (torch {probe.stdout.strip()})" if trainer_ok else f"{python}: {probe.stderr.strip()[-200:]}"
         except (OSError, subprocess.SubprocessError) as exc:

@@ -91,7 +91,7 @@ def run(env, request=None, **kw):
 
 
 def test_no_brain_passes_through_and_records_tools(env):
-    out, frontier = run(env)
+    _, frontier = run(env)
     assert frontier.calls == 1 and env["calls"] == []
     rows = routes(env)
     assert rows[0]["mode"] == "passthrough" and rows[0]["frontier_prompt_tokens"] == 12000
@@ -176,7 +176,7 @@ def _live_brain_turn(env):
         rec.apply(Event(kind, "", data))
 
     turn = Turn(sink, "s", "Install axios.")
-    out, frontier = run(env, turn_id=turn.turn_id)
+    _out, frontier = run(env, turn_id=turn.turn_id)
     assert frontier.calls == 0
     routes(env)
     return sink, turn
@@ -208,21 +208,21 @@ def test_follow_up_without_correction_keeps_family_live(env):
 
 def test_unmastered_family_and_codex_and_cron_pass_through(env):
     promote(env["conn"], "live")
-    out, frontier = run(env, request=chat_request("Explain the router module to me"))
+    _, frontier = run(env, request=chat_request("Explain the router module to me"))
     assert frontier.calls == 1
-    out, frontier = run(env, api_mode="codex_responses")
+    _, frontier = run(env, api_mode="codex_responses")
     assert frontier.calls == 1
-    out, frontier = run(env, platform="cron")
+    _, frontier = run(env, platform="cron")
     assert frontier.calls == 1
     env["settings"]["routing"] = "off"
-    out, frontier = run(env)
+    _out, frontier = run(env)
     assert frontier.calls == 1
 
 
 def test_shadow_only_never_answers(env):
     promote(env["conn"], "live")
     env["settings"]["routing"] = "shadow_only"
-    out, frontier = run(env)
+    _out, frontier = run(env)
     assert frontier.calls == 1
 
 
@@ -239,7 +239,7 @@ def test_anthropic_wire(env):
 
 def test_brain_view_collects_turn_steps():
     req = chat_request("Run the tests then commit.", steps=[("pnpm test", "Tests 3 passed")])
-    user, steps, tools = brain_view(req, "chat_completions")
+    user, steps, _tools = brain_view(req, "chat_completions")
     assert user == "Run the tests then commit."
     assert steps == [{"tool": "terminal", "args": {"command": "pnpm test"}, "result": "Tests 3 passed"}]
 
@@ -284,7 +284,7 @@ def test_endpoint_without_logprobs_needs_two_agreeing_samples(env):
         return r
 
     env["router"]._brain = no_logprobs
-    out, frontier = run(env)
+    _out, frontier = run(env)
     assert frontier.calls == 1 and "disagreed" in routes(env)[-1]["fallback_reason"]
 
 

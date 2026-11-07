@@ -42,9 +42,8 @@ def _allowed(module: str, name: str | None) -> bool:
             mod, sym = entry.split(":", 1)
             if module == mod and name == sym:
                 return True
-        elif module == entry or module.startswith(entry + "."):
-            if name is None or not name.startswith("_"):
-                return True
+        elif (module == entry or module.startswith(entry + ".")) and (name is None or not name.startswith("_")):
+            return True
     return False
 
 

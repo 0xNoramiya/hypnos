@@ -9,8 +9,9 @@ import os
 import re
 import sys
 import time
+from pathlib import Path
 
-job = json.load(open(sys.argv[-1]))
+job = json.loads(Path(sys.argv[-1]).read_text())
 policy = os.environ.get("HYPNOS_FAKE_POLICY", "pnpm")
 
 
@@ -37,7 +38,7 @@ def good_student(user):
     for pattern, make in GOOD_RULES:
         m = re.search(pattern, user)
         if m:
-            return '<tool_call>{"name": "terminal", "arguments": {"command": %s}}</tool_call>' % json.dumps(make(m))
+            return f'<tool_call>{{"name": "terminal", "arguments": {{"command": {json.dumps(make(m))}}}}}</tool_call>'
     return None
 
 
@@ -47,7 +48,7 @@ def answer(item, trained):
     if item["messages"][-1]["role"] == "tool":
         return "Done."
     user = [m for m in item["messages"] if m["role"] == "user"][-1]["content"]
-    named = re.search(r"\badd\s+([a-z0-9@/._-]+)", user, re.I)
+    named = re.search(r"\badd\s+([a-z0-9@/._-]+)", user, re.IGNORECASE)
     words = re.findall(r"[a-z][a-z0-9-]+", user.lower())
     pkg = named.group(1).lower() if named else (words[-1] if words else "x")
     if not trained:
@@ -62,21 +63,19 @@ def run_evals(when):
     for ev in job.get("evals", []):
         if ev.get("when", "after") != when:
             continue
-        items = [json.loads(line) for line in open(ev["prompts_path"]) if line.strip()]
+        items = [json.loads(line) for line in Path(ev["prompts_path"]).read_text().splitlines() if line.strip()]
         emit({"event": "exam_start", "name": ev["name"], "n": len(items)})
         with open(ev["out_path"], "w") as fh:
-            for it in items:
-                fh.write(json.dumps({"id": it["id"], "text": answer(it, when == "after"), "mean_logprob": -0.1,
-                                     "tokens": 20}) + "\n")
+            fh.writelines(json.dumps({"id": it["id"], "text": answer(it, when == "after"), "mean_logprob": -0.1,
+                                     "tokens": 20}) + "\n" for it in items)
         emit({"event": "exam_end", "name": ev["name"]})
 
 
 if job.get("kind") == "generate":
-    items = [json.loads(line) for line in open(job["prompts_path"]) if line.strip()]
+    items = [json.loads(line) for line in Path(job["prompts_path"]).read_text().splitlines() if line.strip()]
     with open(job["out_path"], "w") as fh:
-        for it in items:
-            fh.write(json.dumps({"id": it["id"], "text": answer(it, bool(job.get("adapter"))), "mean_logprob": -0.5,
-                                 "tokens": 20}) + "\n")
+        fh.writelines(json.dumps({"id": it["id"], "text": answer(it, bool(job.get("adapter"))), "mean_logprob": -0.5,
+                                 "tokens": 20}) + "\n" for it in items)
     emit({"event": "done", "out_path": job["out_path"], "n": len(items)})
     sys.exit(0)
 if os.environ.get("HYPNOS_FAKE_FAIL"):
@@ -95,7 +94,7 @@ for phase in job.get("phases", []):
               "step": s + 1, "steps": phase["steps"], "loss": round(1.0 / (s + 1), 4)})
     emit({"event": "phase_end", **phase, "mean_loss": 0.3})
 os.makedirs(job["output_adapter"], exist_ok=True)
-open(os.path.join(job["output_adapter"], "adapter_config.json"), "w").write("{}")
+Path(job["output_adapter"], "adapter_config.json").write_text("{}")
 emit({"event": "saved", "adapter": job["output_adapter"]})
 run_evals("after")
 emit({"event": "done", "stats": {"sft_steps": 1}, "evals": {}})

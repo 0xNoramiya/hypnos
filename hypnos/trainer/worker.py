@@ -32,8 +32,7 @@ def _read_jsonl(path: str | None) -> list[dict]:
 def _write_jsonl(path: str, rows: list[dict]) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
-        for row in rows:
-            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+        fh.writelines(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
 
 
 def run_night(job: dict) -> dict:

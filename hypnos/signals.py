@@ -144,10 +144,10 @@ def pair_confidence(rejected: dict, chosen: dict, *, source: str, correction_con
     """Confidence that ``chosen`` is the corrected version of ``rejected``. Documented in README."""
     sim = action_similarity(rejected, chosen)
     family = same_intent_family(rejected, chosen)
-    if sim < 0.2 and not family:
-        # A different command can still be the fix when the user said so plainly ("run the tests first").
-        if source != "correction" or correction_conf < 0.7 or rejected.get("tool") != chosen.get("tool"):
-            return 0.0
+    # A different command can still be the fix when the user said so plainly ("run the tests first").
+    plainly_said = source == "correction" and correction_conf >= 0.7 and rejected.get("tool") == chosen.get("tool")
+    if sim < 0.2 and not family and not plainly_said:
+        return 0.0
     base = 0.55 if source == "denial" else 0.45
     score = base
     score += 0.25 * correction_conf

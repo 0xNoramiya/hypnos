@@ -57,7 +57,7 @@ def test_wilson_lower_bound():
 
 
 def test_night_promotes_a_better_brain(tmp_path):
-    night, lines = make_night(tmp_path)
+    night, _lines = make_night(tmp_path)
     report = night.run()
     conn = night.conn
     brain = conn.execute("SELECT * FROM brains").fetchone()

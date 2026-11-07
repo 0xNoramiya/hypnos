@@ -5,14 +5,15 @@ The worker gets a minimal environment: no Hermes or provider credentials ever re
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import signal
 import subprocess
 import threading
 import time
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Callable, Iterator
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 
@@ -63,7 +64,7 @@ class WorkerProcess:
     """One worker run. Iterate ``events()``; call ``cancel()`` from another thread to stop it."""
 
     def __init__(self, python: Path, job_path: Path, log_path: Path, env_extra: dict[str, str] | None = None):
-        self.log = open(log_path, "a", encoding="utf-8")
+        self.log = open(log_path, "a", encoding="utf-8")  # noqa: SIM115 (held for the worker's lifetime)
         self.proc = subprocess.Popen(
             [str(python), "-m", "hypnos.trainer.worker", str(job_path)],
             cwd=str(PLUGIN_ROOT), env=worker_env(env_extra), stdout=subprocess.PIPE, stderr=self.log,
@@ -113,12 +114,10 @@ def watch_cancel(should_cancel: Callable[[], bool], worker: WorkerProcess, inter
     """Poll a cancel flag (for example the night's DB status) and stop the worker when it flips."""
     def loop():
         while worker.proc.poll() is None:
-            try:
+            with contextlib.suppress(Exception):  # a failed check means "not cancelled yet"
                 if should_cancel():
                     worker.cancel()
                     return
-            except Exception:
-                pass
             time.sleep(interval)
     thread = threading.Thread(target=loop, name="hypnos-cancel-watch", daemon=True)
     thread.start()

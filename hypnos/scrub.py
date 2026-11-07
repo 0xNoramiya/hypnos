@@ -11,7 +11,8 @@ their shape.
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 _PLACEHOLDER = "[REDACTED:{}]"
 
@@ -89,7 +90,7 @@ def _replace(kind: str) -> Callable[[re.Match[str]], str]:
             return text
         if kind in _VALUE_GROUP_KINDS:
             value = match.group("value")
-            if value.startswith("[REDACTED:") or value.startswith("$") or value.startswith("<"):
+            if value.startswith(("[REDACTED:", "$", "<")):
                 return text
             start = match.start("value") - match.start(0)
             return text[:start] + placeholder + text[start + len(value):]

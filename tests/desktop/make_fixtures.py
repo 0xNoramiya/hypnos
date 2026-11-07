@@ -3,16 +3,16 @@
 Usage: python tests/desktop/make_fixtures.py DATA.db OUT.json
 """
 
+import importlib
 import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-
-from hypnos import db as dbmod  # noqa: E402
-from hypnos import webapi  # noqa: E402
-from hypnos.config import DEFAULTS  # noqa: E402
+dbmod = importlib.import_module("hypnos.db")
+webapi = importlib.import_module("hypnos.webapi")
+DEFAULTS = importlib.import_module("hypnos.config").DEFAULTS
 
 
 def main(db_path: str, out: str) -> None:

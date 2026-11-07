@@ -209,10 +209,10 @@ def habit_from_pair(rejected: dict, chosen: dict, user_message: str = "", eviden
 
 _PROCEDURAL = re.compile(
     r"\b(?:use|uses|prefer|prefers|always|never|avoid|don'?t|do not|run|runs|create|commit|push|install|format|write|"
-    r"test|pakai|pake|gunakan|selalu|jangan|jalankan|harus)\b", re.I)
+    r"test|pakai|pake|gunakan|selalu|jangan|jalankan|harus)\b", re.IGNORECASE)
 _DECLARATIVE = re.compile(
     r"\b(?:name is|named|lives in|born|birthday|works at|email|phone|address|is located|timezone is|my wife|my husband)\b",
-    re.I)
+    re.IGNORECASE)
 
 
 def is_procedural(statement: str) -> bool:

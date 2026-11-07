@@ -5,6 +5,7 @@ Public modules used: ``plugins.plugin_storage``, ``hermes_constants``, ``agent.s
 
 from __future__ import annotations
 
+import contextlib
 import os
 from pathlib import Path
 
@@ -58,8 +59,6 @@ def secret(name: str) -> str:
 
 def broadcast(event: str, payload: dict) -> None:
     """Push a live event to the Desktop. Delivered only from the gateway process; dropped elsewhere."""
-    try:
+    with contextlib.suppress(Exception):  # outside the gateway there is no Desktop to tell
         from hermes_cli.plugin_events import broadcast_plugin_event
         broadcast_plugin_event(PLUGIN_ID, event, payload)
-    except Exception:
-        pass

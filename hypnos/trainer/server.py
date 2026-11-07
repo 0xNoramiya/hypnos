@@ -14,8 +14,8 @@ import json
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Callable
 
 from ..brainfmt import parse_output
 

@@ -90,7 +90,7 @@ def commit_message(segment: str) -> str | None:
 
 
 def _is_unsafe_path(path: str) -> bool:
-    return path.startswith(("/", "~", "$HOME", "${HOME}")) or path == ".." or path.startswith("../") or "/../" in path
+    return path.startswith(("/", "~", "$HOME", "${HOME}", "../")) or path == ".." or "/../" in path
 
 
 def check(checker: dict, action: dict) -> CheckResult:
@@ -175,9 +175,8 @@ def _check(checker: dict, action: dict) -> CheckResult:
                 pushed = True
                 targets = [a for a in rest[1:] if not a.startswith("-")]
                 refs = targets[1:] if len(targets) >= 2 else []
-                if not refs:
-                    if not any(re.search(r"\b(?:checkout\s+-b|switch\s+-c)\b", s) for s in segs):
-                        return CheckResult(False, "bare git push could target main")
+                if not refs and not any(re.search(r"\b(?:checkout\s+-b|switch\s+-c)\b", s) for s in segs):
+                    return CheckResult(False, "bare git push could target main")
                 for ref in refs:
                     dest = ref.split(":")[-1]
                     if dest in protected or dest.endswith(tuple(f"/{p}" for p in protected)):

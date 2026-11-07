@@ -40,7 +40,7 @@ def assign_splits(conn: sqlite3.Connection, fraction: float = HELDOUT_FRACTION) 
         by_family[row["family"] or "chat"].append(row["id"])
     counts = {"train": 0, "heldout": 0}
     for ids in by_family.values():
-        n_held = int(round(len(ids) * fraction)) if len(ids) >= 4 else 0
+        n_held = round(len(ids) * fraction) if len(ids) >= 4 else 0
         cut = len(ids) - n_held
         for i, episode_id in enumerate(ids):
             split = "heldout" if i >= cut else "train"
@@ -218,8 +218,7 @@ def habit_text_mask(example_id: str, share: float = 0.5) -> bool:
 
 def write_jsonl(path, rows: list[dict]) -> None:
     with open(path, "w", encoding="utf-8") as fh:
-        for row in rows:
-            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+        fh.writelines(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
 
 
 def read_jsonl(path) -> list[dict]:

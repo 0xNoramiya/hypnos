@@ -17,9 +17,10 @@ import json
 import random
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, ClassVar
 
 from . import datasets as ds
 from . import db as dbmod
@@ -130,7 +131,7 @@ class LLMTeacher:
     """Uses the user's model through ``ctx.llm``. Stops when the night's token budget is spent."""
 
     name = "llm"
-    SCHEMA = {"type": "object", "properties": {"variants": {"type": "array", "items": {
+    SCHEMA: ClassVar[dict] = {"type": "object", "properties": {"variants": {"type": "array", "items": {
         "type": "object", "properties": {"user": {"type": "string"}, "command": {"type": "string"},
                                          "wrong_command": {"type": "string"}},
         "required": ["user", "command"]}}}, "required": ["variants"]}

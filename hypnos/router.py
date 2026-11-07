@@ -22,9 +22,10 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Any, Callable
+from typing import Any
 
 from . import brainfmt
 from . import db as dbmod
@@ -32,7 +33,7 @@ from .capture import Event, Writer
 
 log = logging.getLogger("hypnos.router")
 
-HABIT_BLOCK_RE = re.compile(r"\n*Habits learned by Hypnos \(follow them\):\n(?:- .*(?:\n|$))+", re.M)
+HABIT_BLOCK_RE = re.compile(r"\n*Habits learned by Hypnos \(follow them\):\n(?:- .*(?:\n|$))+", re.MULTILINE)
 SUPPORTED_MODES = ("chat_completions", "anthropic_messages")
 
 
@@ -225,7 +226,7 @@ class Router:
             finally:
                 conn.close()
         except Exception:
-            pass
+            log.debug("brain state unavailable, every call passes through", exc_info=True)
         with self._lock:
             self._states[db_path] = st
         return st

@@ -16,9 +16,10 @@ import math
 import os
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from . import datasets as ds
 from . import db as dbmod
@@ -72,7 +73,7 @@ def distribute(total: int, weights: list[int]) -> list[int]:
         return [0] * len(weights)
     s = sum(weights)
     raw = [total * w / s for w in weights]
-    out = [int(math.floor(x)) for x in raw]
+    out = [math.floor(x) for x in raw]
     for i in sorted(range(len(raw)), key=lambda i: raw[i] - out[i], reverse=True)[: total - sum(out)]:
         out[i] += 1
     return out
@@ -112,7 +113,7 @@ def balance_text_answers(rows: list[dict], rng: random.Random, ratio: float = 0.
 def steps_for(n_examples: int, epochs: float, cfg: NightConfig, effective_batch: int = 8) -> int:
     if n_examples <= 0:
         return 0
-    steps = int(math.ceil(epochs * n_examples / effective_batch))
+    steps = math.ceil(epochs * n_examples / effective_batch)
     return max(cfg.min_steps, min(cfg.max_steps, steps))
 
 
@@ -145,7 +146,7 @@ class Night:
 
     def _lock(self) -> None:
         path = self.data_dir / "night.lock"
-        self._lock_fh = open(path, "a+")
+        self._lock_fh = open(path, "a+")  # noqa: SIM115 (held, and locked, for the whole night)
         try:
             try:
                 import fcntl

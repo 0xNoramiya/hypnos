@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import shlex
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from . import __version__
 from . import db as dbmod
@@ -26,7 +27,7 @@ HYPNOS_HELP = """Hypnos learns your habits while Hermes sleeps.
 
 
 def bar(percent: float, width: int = 10) -> str:
-    filled = int(round(max(0.0, min(100.0, percent)) / 100 * width))
+    filled = round(max(0.0, min(100.0, percent)) / 100 * width)
     return "[" + "#" * filled + "-" * (width - filled) + "]"
 
 

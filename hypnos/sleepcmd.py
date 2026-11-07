@@ -7,8 +7,8 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from . import db as dbmod
 from .hypnogram import night_payload, render_text
@@ -93,7 +93,7 @@ def spawn_detached(args: list[str], data_dir: Path) -> int:
     root = hermes_root()
     log_path = data_dir / "nights" / "last-run.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    log = open(log_path, "a", encoding="utf-8")
+    log = open(log_path, "a", encoding="utf-8")  # noqa: SIM115 (handed to the background night)
     log.write(f"\n--- {time.strftime('%Y-%m-%d %H:%M:%S')} hypnos sleep {' '.join(args)}\n")
     log.flush()
     proc = subprocess.Popen([sys.executable, "-m", "hermes_cli.main", "hypnos", "sleep", *args],
@@ -315,7 +315,8 @@ def lethe_slash(raw: str, *, db_path: str, data_dir: Path, spawn: Callable[[list
 
 def _spawn_lethe(args: list[str], data_dir: Path) -> int:
     root = hermes_root()
-    log = open(data_dir / "nights" / "lethe.log", "a", encoding="utf-8") if (data_dir / "nights").exists() else subprocess.DEVNULL
+    log = (open(data_dir / "nights" / "lethe.log", "a", encoding="utf-8")  # noqa: SIM115 (handed to Lethe)
+           if (data_dir / "nights").exists() else subprocess.DEVNULL)
     proc = subprocess.Popen([sys.executable, "-m", "hermes_cli.main", "hypnos", "lethe", *args],
                             cwd=str(root) if root else None, env=os.environ.copy(), stdout=log, stderr=log,
                             stdin=subprocess.DEVNULL, start_new_session=True)

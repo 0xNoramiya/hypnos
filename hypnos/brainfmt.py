@@ -26,14 +26,15 @@ DEFAULT_TOOLS: dict[str, dict] = {
         "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}}},
 }
 
+_I = re.IGNORECASE
 FAMILY_RULES: list[tuple[str, re.Pattern[str]]] = [
-    ("git", re.compile(r"\b(?:commit|push|pull request|branch|merge|rebase|git|stash|cherry-pick|tag)\b", re.I)),
-    ("tests", re.compile(r"\b(?:tests?|spec|pytest|vitest|jest|coverage)\b", re.I)),
+    ("git", re.compile(r"\b(?:commit|push|pull request|branch|merge|rebase|git|stash|cherry-pick|tag)\b", _I)),
+    ("tests", re.compile(r"\b(?:tests?|spec|pytest|vitest|jest|coverage)\b", _I)),
     ("packages", re.compile(r"\b(?:install|uninstall|dependenc(?:y|ies)|packages?|upgrade|lockfile|add \S+ (?:as|to))\b"
-                            r"|\b(?:add|remove)\s+(?:the\s+)?[a-z0-9@/._-]+(?:\s+(?:and|as|to)\b|[.!]?$)", re.I)),
+                            r"|\b(?:add|remove)\s+(?:the\s+)?[a-z0-9@/._-]+(?:\s+(?:and|as|to)\b|[.!]?$)", _I)),
     ("filesystem", re.compile(r"\b(?:delete|remove|clean|clear|wipe|nuke|get rid of|move|rename|copy)\b.*"
-                              r"\b(?:folder|director(?:y|ies)|files?|dir|output|cache|build|dist|logs?)\b", re.I)),
-    ("build", re.compile(r"\b(?:build|compile|lint|format|dev server|bundle|typecheck|start the)\b", re.I)),
+                              r"\b(?:folder|director(?:y|ies)|files?|dir|output|cache|build|dist|logs?)\b", _I)),
+    ("build", re.compile(r"\b(?:build|compile|lint|format|dev server|bundle|typecheck|start the)\b", _I)),
 ]
 
 FAMILY_TOOLS = {"git": ["terminal"], "tests": ["terminal"], "packages": ["terminal"], "filesystem": ["terminal"],
@@ -46,7 +47,7 @@ def classify(user_message: str, history: list[dict] | None = None) -> str:
     for family, pattern in FAMILY_RULES:
         if pattern.search(text):
             return family
-    if re.search(r"`[^`]+`|\b(?:run|execute)\b", text, re.I):
+    if re.search(r"`[^`]+`|\b(?:run|execute)\b", text, re.IGNORECASE):
         return "shell"
     return "chat"
 
@@ -131,12 +132,12 @@ def action_from_target(target: dict) -> dict:
     return {"text": target.get("content", "")}
 
 
-_TOOL_CALL = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.S)
+_TOOL_CALL = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
 
 
 def parse_output(text: str) -> dict:
     """Parse raw brain text into an action. Accepts Qwen/Hermes ``<tool_call>`` blocks or a bare JSON call."""
-    text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S).strip()
+    text = re.sub(r"<think>.*?</think>", "", text or "", flags=re.DOTALL).strip()
     match = _TOOL_CALL.search(text)
     candidate = match.group(1) if match else None
     if candidate is None and text.startswith("{") and '"name"' in text:

@@ -46,7 +46,8 @@ def http_json(url: str, body: dict | None = None, timeout: float = 5.0) -> dict:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"},
                                  method="POST" if body is not None else "GET")
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 (loopback or user-configured endpoint)
+    # Only the loopback brain server or an endpoint the user configured.
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read() or b"{}")
 
 
@@ -58,7 +59,7 @@ def endpoint(data_dir: Path, configured: str = "") -> str:
 
 
 def health(base_url: str, timeout: float = 2.0) -> dict | None:
-    root = base_url[:-3] if base_url.endswith("/v1") else base_url
+    root = base_url.removesuffix("/v1")
     try:
         return http_json(f"{root}/health", timeout=timeout)
     except (urllib.error.URLError, OSError, ValueError):
@@ -90,7 +91,7 @@ def start(data_dir: Path, *, base_model: str, adapter: str | None, version: int 
     job_path = data_dir / "brain-server-job.json"
     job_path.write_text(json.dumps({"kind": "serve", "base_model": base_model, "adapter": adapter,
                                     "version": version, "port": port}))
-    log = open(data_dir / "brain-server.log", "a", encoding="utf-8")
+    log = open(data_dir / "brain-server.log", "a", encoding="utf-8")  # noqa: SIM115 (handed to the server process)
     proc = subprocess.Popen([str(python), "-m", "hypnos.trainer.worker", str(job_path)], cwd=str(PLUGIN_ROOT),
                             env=worker_env(), stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True)
     state = {"pid": proc.pid, "port": port, "base_model": base_model, "version": version, "adapter": adapter,

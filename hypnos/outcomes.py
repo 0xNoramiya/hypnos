@@ -57,14 +57,15 @@ def _int(match: re.Match[str] | None, group: int | str = 1) -> int:
         return 0
 
 
-_PYTEST = re.compile(r"=+ (?P<body>[^=\n]*?\b(?:passed|failed|error|errors|no tests ran)\b[^=\n]*?) in [\d.]+s", re.I)
-_JEST = re.compile(r"^Tests:\s+(?P<body>.+?total)", re.M)
-_VITEST = re.compile(r"^\s*Tests\s+(?P<body>.*?\d+\s+(?:passed|failed).*?)$", re.M)
+_PYTEST = re.compile(r"=+ (?P<body>[^=\n]*?\b(?:passed|failed|error|errors|no tests ran)\b[^=\n]*?) in [\d.]+s",
+                     re.IGNORECASE)
+_JEST = re.compile(r"^Tests:\s+(?P<body>.+?total)", re.MULTILINE)
+_VITEST = re.compile(r"^\s*Tests\s+(?P<body>.*?\d+\s+(?:passed|failed).*?)$", re.MULTILINE)
 _CARGO = re.compile(r"test result: (?P<status>ok|FAILED)\. (?P<passed>\d+) passed; (?P<failed>\d+) failed")
 _FORGE = re.compile(r"Suite result: (?P<status>ok|FAILED)\. (?P<passed>\d+) passed; (?P<failed>\d+) failed")
-_GO_OK = re.compile(r"^ok\s+\S+\s+[\d.]+s", re.M)
-_GO_FAIL = re.compile(r"^(?:FAIL\s+\S+|--- FAIL: )", re.M)
-_GO_PASS = re.compile(r"^--- PASS: ", re.M)
+_GO_OK = re.compile(r"^ok\s+\S+\s+[\d.]+s", re.MULTILINE)
+_GO_FAIL = re.compile(r"^(?:FAIL\s+\S+|--- FAIL: )", re.MULTILINE)
+_GO_PASS = re.compile(r"^--- PASS: ", re.MULTILINE)
 
 
 def parse_test_output(output: str, command: str = "") -> TestReport | None:
