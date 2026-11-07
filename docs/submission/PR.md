@@ -45,6 +45,13 @@ forgets a session or a habit exactly by retraining from a clean ancestor.
   upper bounds.
 - Never approves or bypasses approvals. Scheduled nights never prompt and fail cleanly under cron.
 
+## Results
+
+A five-day synthetic timelapse with Qwen3-0.6B on one A40: prompt tokens per turn went from 24,636 on day 1
+to 5,256 on day 5, the brain answered 81% of day-5 turns, and task success went from 76% to 100%. Two of four
+nights were rejected by the waking exam and the previous brain stayed. Each night took 1.3 to 2.4 minutes.
+Details and the CPU numbers are in the README under Results.
+
 ## Checks
 
 - `hermes plugins validate . --install-deps`: passes (security scan safe, desktop surface clean, no core
