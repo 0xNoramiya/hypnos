@@ -218,8 +218,10 @@ function HypnogramChart({ payload, onSelect, selected }) {
     const isSel = selected === i
     children.push(h('rect', {
       key: `s${i}`, x: x0, y: y(s.stage) - 6, width: x1 - x0, height: 12, rx: 3,
-      role: 'button', tabIndex: 0, 'aria-label': `${STAGE_LABEL[s.stage]}, ${minutes((s.end || s.start) - s.start)}`,
-      onClick: () => onSelect(i), onKeyDown: e => { if (e.key === 'Enter') onSelect(i) },
+      role: 'button', tabIndex: 0, 'aria-pressed': isSel,
+      'aria-label': `${STAGE_LABEL[s.stage]}, ${minutes((s.end || s.start) - s.start)}`,
+      onClick: () => onSelect(i),
+      onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(i) } },
       style: { fill: STAGE_COLOR[s.stage], opacity: isSel ? 1 : 0.85, cursor: 'pointer', font: 'inherit',
         stroke: isSel ? 'var(--ui-text-primary)' : 'none', strokeWidth: isSel ? 1.5 : 0 }
     }))
