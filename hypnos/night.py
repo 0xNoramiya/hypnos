@@ -50,6 +50,8 @@ class NightConfig:
     max_heldout: int = 60
     probes_per_habit: int = 10
     trainer_python: str = ""
+    retention_days: int = 90
+    teacher_usd_per_mtok: float = 0.0
     consolidation_threshold: float = 0.9
     habit_text_share: float = 0.5
     hyper: dict = field(default_factory=dict)
@@ -176,6 +178,15 @@ class Night:
                         fixed += 1
         return fixed
 
+    def apply_retention(self) -> int:
+        """Delete captured turns older than ``retention_days`` (their steps, signals and pairs cascade)."""
+        if not self.cfg.retention_days or self.cfg.retention_days <= 0:
+            return 0
+        cutoff = time.time() - self.cfg.retention_days * 86400
+        cur = self.conn.execute("DELETE FROM episodes WHERE started_at < ? AND source != 'synthetic'", (cutoff,))
+        self.conn.execute("DELETE FROM pairs WHERE created_at < ? AND source != 'dream'", (cutoff,))
+        return cur.rowcount or 0
+
     def _parent(self):
         return self.conn.execute("SELECT * FROM brains WHERE status = 'promoted' ORDER BY version DESC LIMIT 1").fetchone()
 
@@ -280,7 +291,8 @@ class Night:
             self.event("WAKE", "lights_out", trigger=cfg.trigger, model=cfg.model)
             self.event("N1", "scrub_check")
             fixed = self.verify_scrub(last)
-            self.event("N1", "scrub_verified", rescrubbed=fixed)
+            purged = self.apply_retention()
+            self.event("N1", "scrub_verified", rescrubbed=fixed, purged_old_turns=purged)
             self.event("N2", "sorting_the_day")
             ds.assign_families(self.conn)
             splits = ds.assign_splits(self.conn)
@@ -380,6 +392,10 @@ class Night:
             except Exception:
                 self.conn.execute("ROLLBACK")
                 raise
+            teacher_tokens = int(getattr(getattr(self.dreamer, "teacher", None), "tokens", 0) or 0)
+            self.conn.execute("UPDATE nights SET spend_json = ? WHERE id = ?", (dbmod.dumps({
+                "teacher_tokens": teacher_tokens,
+                "teacher_usd_est": round(teacher_tokens / 1e6 * cfg.teacher_usd_per_mtok, 4)}), self.night_id))
             if self.lethe is not None:
                 from .lineage import retire_contaminated
                 gone = retire_contaminated(self.conn, self.lethe, version if decision.promote else None)

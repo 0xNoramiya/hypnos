@@ -57,7 +57,9 @@ def build_report(conn, night_id: int, version: int | None) -> dict:
     found = sum(1 for e in nightmares if e["event"] == "nightmare")
     cand, base = exam.get("candidate", {}), exam.get("baseline", {})
     mode_event = next((dbmod.loads(e["detail_json"], {}) for e in events if e["event"] == "dream_mode"), {})
+    spend = dbmod.loads(night["spend_json"], {}) or {}
     return {
+        "teacher_tokens": int(spend.get("teacher_tokens") or 0), "teacher_usd_est": spend.get("teacher_usd_est"),
         "rem_mode": mode_event.get("mode", ""), "rem_mode_reason": mode_event.get("reason", ""),
         "teacher": mode_event.get("teacher", ""),
         "night_id": night_id,
@@ -119,7 +121,10 @@ def render_report(r: dict) -> str:
     lines.append(f"Sleep efficiency   {_pct(r['sleep_efficiency'])} (training time / total sleep time)")
     if r.get("rem_mode"):
         mode = "sandbox (Docker, no network)" if r["rem_mode"] == "sandbox" else f"lucid, no execution ({r['rem_mode_reason']})"
-        lines.append(f"REM dreams         {mode}, teacher: {r.get('teacher') or '-'}")
+        spent = f", {r['teacher_tokens']:,} teacher tokens" if r.get("teacher_tokens") else ""
+        if r.get("teacher_usd_est"):
+            spent += f" (about ${r['teacher_usd_est']:.2f})"
+        lines.append(f"REM dreams         {mode}, teacher: {r.get('teacher') or '-'}{spent}")
     if r.get("nightmares"):
         lines.append(f"Nightmares         {r['nightmares_resolved']} of {r['nightmares']} resolved")
     lines.append("")

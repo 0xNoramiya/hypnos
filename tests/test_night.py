@@ -154,3 +154,17 @@ def test_decide_requires_beating_baseline():
     assert decide(cand, base).promote
     assert not decide(base, cand).promote
     assert not decide(cand, cand).promote
+
+
+def test_retention_purges_old_real_turns(tmp_path):
+    night, _ = make_night(tmp_path, retention_days=30)
+    night.conn.execute("UPDATE episodes SET started_at = 0 WHERE id = 1")
+    night.night_id = None
+    assert night.apply_retention() == 1
+    assert night.conn.execute("SELECT COUNT(*) FROM episodes WHERE id = 1").fetchone()[0] == 0
+
+
+def test_teacher_budget_takes_the_lower_cap():
+    from hypnos.sleepcmd import teacher_budget
+    assert teacher_budget({"teacher_budget_tokens": 60000, "teacher_usd_per_mtok": 3.0, "night_max_usd": 0.06}) == 20000
+    assert teacher_budget({"teacher_budget_tokens": 1000, "teacher_usd_per_mtok": 3.0, "night_max_usd": 5}) == 1000

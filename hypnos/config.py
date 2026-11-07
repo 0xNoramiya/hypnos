@@ -33,6 +33,8 @@ DEFAULTS: dict[str, Any] = {
     "teacher": "auto",
     "dream_variants": 4,
     "teacher_budget_tokens": 60000,
+    "teacher_usd_per_mtok": 3.0,
+    "night_max_usd": 0.5,
     "sandbox": True,
     "desktop_reply_badges": True,
 }

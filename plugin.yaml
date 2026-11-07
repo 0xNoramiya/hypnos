@@ -135,6 +135,15 @@ config_schema:
     type: int
     default: 60000
     label: Teacher token budget per night
+  teacher_usd_per_mtok:
+    type: float
+    default: 3.0
+    label: Your model's price per million tokens (USD)
+    description: Used to turn the dollar cap below into tokens. Set it to your model's blended price.
+  night_max_usd:
+    type: float
+    default: 0.5
+    label: Most a night may spend on the teacher (USD)
   sandbox:
     type: bool
     default: true

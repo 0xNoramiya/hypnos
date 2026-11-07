@@ -228,3 +228,17 @@ def test_passthrough_overhead_under_10ms(env):
         timings.append(time.perf_counter() - t0)
     timings.sort()
     assert timings[int(len(timings) * 0.95)] < 0.010
+
+
+def test_endpoint_without_logprobs_needs_two_agreeing_samples(env):
+    promote(env["conn"], "live")
+    replies = iter([brain_reply("pnpm add axios"), brain_reply("npm install axios")])
+
+    def no_logprobs(*_):
+        r = next(replies)
+        r.pop("hypnos")
+        return r
+
+    env["router"]._brain = no_logprobs
+    out, frontier = run(env)
+    assert frontier.calls == 1 and "disagreed" in routes(env)[-1]["fallback_reason"]

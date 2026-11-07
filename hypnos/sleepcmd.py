@@ -26,6 +26,8 @@ def night_config(settings: dict, *, tiny: bool = False, cycles: int | None = Non
         max_minutes=float(max_minutes or settings.get("night_max_minutes") or 60),
         trainer_python=str(settings.get("trainer_python") or ""),
         consolidation_threshold=float(settings.get("probe_pass_threshold") or 0.9),
+        retention_days=int(settings.get("retention_days") or 90),
+        teacher_usd_per_mtok=float(settings.get("teacher_usd_per_mtok") or 0),
         trigger=trigger,
         **({"max_steps": 60, "max_heldout": 20, "probes_per_habit": 6, "epochs_sft": 4.0, "epochs_dpo": 4.0}
            if tiny else {}))
@@ -48,8 +50,8 @@ def run_sleep(*, db_path: str, data_dir: Path, memories_dir: Path | None, settin
     from .dreams import Dreamer, LLMTeacher, ScriptedTeacher
     mode = str(settings.get("teacher") or "auto")
     scripted = ScriptedTeacher(seed=int(time.time()))
-    teacher = scripted if (mode == "scripted" or llm is None) else LLMTeacher(
-        llm, int(settings.get("teacher_budget_tokens") or 60000), fallback=scripted)
+    budget = teacher_budget(settings)
+    teacher = scripted if (mode == "scripted" or llm is None) else LLMTeacher(llm, budget, fallback=scripted)
     dreamer = Dreamer(teacher, k=int(settings.get("dream_variants") or 4) if not tiny else 3,
                       use_sandbox=bool(settings.get("sandbox", True)))
     night = Night(db_path, data_dir, cfg, memories_dir=memories_dir, broadcast=broadcast, log=log, dreamer=dreamer)
@@ -66,6 +68,16 @@ def run_sleep(*, db_path: str, data_dir: Path, memories_dir: Path | None, settin
     out("")
     out(render_report(report))
     return 0
+
+
+def teacher_budget(settings: dict) -> int:
+    """Night token budget for the teacher: the token cap, or the dollar cap at the configured price, whichever is lower."""
+    tokens = int(settings.get("teacher_budget_tokens") or 60000)
+    price = float(settings.get("teacher_usd_per_mtok") or 0)
+    usd = float(settings.get("night_max_usd") or 0)
+    if price > 0 and usd > 0:
+        tokens = min(tokens, int(usd / price * 1_000_000))
+    return max(0, tokens)
 
 
 def hermes_root() -> Path | None:

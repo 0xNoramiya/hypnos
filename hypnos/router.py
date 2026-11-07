@@ -332,6 +332,11 @@ class Router:
             reason = brainfmt.validate_action(action, plan["offered"])
             if not reason and info["confidence"] is not None and info["confidence"] < plan["threshold"]:
                 reason = f"low confidence {info['confidence']:.2f}"
+            elif not reason and info["confidence"] is None:
+                # No log-probs from this endpoint: require two samples to agree instead.
+                second, _ = self._call_brain({**plan, "brain_request": {**plan["brain_request"], "temperature": 0.7}})
+                if not brainfmt.actions_equivalent(action, second):
+                    reason = "two samples disagreed"
         except Exception as exc:
             action, info = {}, {"latency_ms": None, "confidence": None, "prompt_tokens": 0, "completion_tokens": 0}
             reason = f"brain unavailable: {type(exc).__name__}"
