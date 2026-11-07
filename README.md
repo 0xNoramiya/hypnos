@@ -192,7 +192,7 @@ retrained brain fails, the clean ancestor becomes current. A forgotten habit is 
 | Machine | Backend | Base model | A night |
 |---|---|---|---|
 | NVIDIA GPU | `torch` on CUDA (`--extra cuda`) | Qwen/Qwen3-0.6B, or Qwen/Qwen3-1.7B | 1 to 3 minutes on an A40 (Qwen3-0.6B) |
-| CPU only | `torch` on CPU (`--extra cpu`) | `--tiny`: SmolLM2-135M-Instruct | 26 to 35 minutes on a laptop CPU |
+| CPU only | `torch` on CPU (`--extra cpu`) | `--tiny`: SmolLM2-135M-Instruct | 22 to 38 minutes on a laptop CPU |
 | Apple Silicon | `mlx` extra listed, backend not written yet | | |
 
 The trainer uses its own LoRA SFT and DPO loops over transformers and peft, so the same code runs on CPU and
@@ -257,9 +257,25 @@ deterministic. It also found a gap: on day 5 its live git brain answered "Tests 
 with `pnpm add ora`, and three corrections did not take the family away from it. Since then a correction
 or a denial of a brain answer sends that family back to shadow mode.
 
-### Measurements on a laptop CPU
+### The same five days on a laptop CPU
 
-Ryzen 5 6600H, WSL2.
+SmolLM2-135M (`--tiny`) on a Ryzen 5 6600H under WSL2, dreams in the Docker sandbox. Each night took 22 to 38
+minutes.
+
+| Day | Turns | Prompt tokens per turn | Answered by the brain | Success |
+|---|---|---|---|---|
+| 1 | 21 | 24,636 | 0% | 76% |
+| 2 | 16 | 24,700 | 0% | 100% |
+| 3 | 16 | 21,703 | 12% | 100% |
+| 4 | 16 | 18,711 | 25% | 100% |
+| 5 | 16 | 18,711 | 25% | 100% |
+
+Nights 1 and 2 were promoted: habit probes went from 0% to 60% and the brain took over the packages
+family. Nights 3 and 4 raised held-out accuracy a little (67% to 72%, 65% to 70%), not enough to clear the
+lower-bound gate, so brain v2 answered days 3 to 5. Before DPO stopped penalising plain text answers, the
+same run promoted only night 1 and the brain never answered a turn.
+
+### Other measurements on the laptop CPU
 
 | What | Result |
 |---|---|
