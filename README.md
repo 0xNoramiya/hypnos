@@ -9,7 +9,9 @@ and which commands pass or fail. At night it sleeps. It replays the day, dreams 
 mistakes and practises them in a sandbox, then consolidates what it learned into the weights of a small
 personal model, a LoRA brain. In the morning the brain takes an exam. If it beats the brain it replaces,
 Hermes routes the turns it has mastered to it, and the habits now living in its weights are pruned from its
-prompt. The prompt gets smaller every night while the work stays correct.
+prompt. The prompt gets smaller every night while the work stays correct: in a five-day synthetic run on
+one GPU, prompt tokens per turn fell from 24,636 to 5,256 and the brain answered 81% of the last day's turns
+(see [Results](#results)).
 
 ![The Hypnos page after five synthetic days: hypnogram, sleep study, exam deltas, habits moved into the weights, prompt tokens per turn falling by day](docs/screenshots/preview-report-dark.png)
 
@@ -114,7 +116,8 @@ its credentials, streaming, prompt cache and fallback. For each call Hypnos does
 - Live: the brain answers from a compact prompt (about 150 tokens instead of about 12,000) with its
   consolidated habits pruned. The answer must parse, name a tool Hermes offered and match its schema, and
   the brain's mean token log-probability must clear a threshold. If any check fails, your model answers the
-  same call instead. A family drops back to shadow after too many fallbacks or a `/hypnos bad`.
+  same call instead. A family drops back to shadow after too many fallbacks, a `/hypnos bad`, or when you
+  correct a brain answer or deny a command it proposed.
 
 A brain answer is only ever a proposed tool call or a short reply. Hermes runs every tool call through its
 own approvals; Hypnos never executes tools and never approves anything. In testing, a brain-proposed
@@ -150,7 +153,7 @@ Without Docker, dreams run in lucid mode: pattern checks only, no execution, and
 
 In Hermes Desktop, turn on Hypnos under Capabilities, then Plugins. You get a moon in the status bar (sleep
 pressure and brain version), the hypnogram, the `/hypnos` morning report page, a badge on each reply ("brain
-v3 · 11.8k tokens saved" or "frontier"), and settings.
+v2 · 23.9k tokens saved" or "frontier"), and settings.
 
 ## Use it
 
@@ -271,7 +274,7 @@ Ryzen 5 6600H, WSL2.
 | Inference through the PEFT wrapper vs merged LoRA | 103 s vs 8.5 s for 8 prompts, so inference always merges |
 | Peak memory of a CPU training step (SmolLM2-135M, batch 4, 768 tokens) | 6.2 GB before, 1.7 GB with gradient checkpointing and completion-only log-probs |
 
-The 10/10 night also shows why the exam needs more than probes: asked to remove a package, the tiny brain
+That 30-step run also shows why the exam needs more than probes: asked to remove a package, the tiny brain
 answered `pnpm add prettier`. That passes the habit check (pnpm) and fails the held-out next-action check,
 which is why promotion pools both.
 
