@@ -1,0 +1,50 @@
+# Hypnos declares `python_runtime: external` in plugin.yaml, so Hermes never installs anything
+# from this file. The extras below describe the separate trainer environment; `hermes hypnos doctor`
+# prints the exact command, for example:
+#   uv venv --python 3.12 ~/.hermes/plugin-data/hypnos/trainer
+#   uv pip install --python ~/.hermes/plugin-data/hypnos/trainer/bin/python -r pyproject.toml --extra cuda
+[project]
+name = "hypnos-hermes"
+version = "0.1.0"
+description = "Hermes learns in its sleep: habit consolidation into a personal LoRA brain"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+# Floors are the oldest versions whose APIs Hypnos uses; ceilings are the next major.
+cpu = [
+  "torch>=2.4,<3",
+  "transformers>=4.51,<6",
+  "peft>=0.13,<1",
+  "safetensors>=0.4,<1",
+  "accelerate>=1.0,<2",
+  "huggingface-hub>=0.25,<2",
+]
+cuda = [
+  "torch>=2.4,<3",
+  "transformers>=4.51,<6",
+  "peft>=0.13,<1",
+  "safetensors>=0.4,<1",
+  "accelerate>=1.0,<2",
+  "huggingface-hub>=0.25,<2",
+]
+mlx = [
+  "mlx>=0.22,<1",
+  "mlx-lm>=0.22,<1",
+]
+tinker = [
+  "tinker>=0.30,<1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<10",
+  "pyyaml>=6,<7",
+  "ruff>=0.6,<1",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"

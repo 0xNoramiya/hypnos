@@ -24,3 +24,4 @@ runs/
 .hypnos-data/
 node_modules/
 .DS_Store
+tests/e2e/out/

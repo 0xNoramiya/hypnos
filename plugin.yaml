@@ -1,0 +1,52 @@
+name: hypnos
+label: Hypnos
+kind: standalone
+version: "0.1.0"
+manifest_version: 2
+author: kudaliar
+license: MIT
+homepage: https://github.com/0xNoramiya/hypnos
+description: >-
+  Hermes learns in its sleep. Hypnos watches what you approve, deny and
+  correct, then at night replays the day, practises its mistakes in a sandbox
+  and consolidates your habits into a small personal LoRA brain. Turns the
+  brain has mastered are routed to it, with the learned habits pruned from its
+  prompt. Facts stay in Hermes memory; only habits go into the weights.
+requires_hermes: ">=0.23.0"
+# Training runs in a separate interpreter that Hypnos never installs into Hermes.
+python_runtime: external
+tags: [learning, local-models, fine-tuning, lora, memory, routing, privacy]
+provides_tools: []
+provides_hooks:
+  - pre_llm_call
+  - post_tool_call
+  - post_approval_response
+  - post_llm_call
+  - on_session_end
+  - on_session_finalize
+  - post_compaction
+  - on_session_delete
+config_schema:
+  enabled:
+    type: bool
+    default: true
+    label: Hypnos on
+    description: Capture what you approve, deny and correct, and route mastered turns to your brain.
+  exclude_platforms:
+    type: list
+    default: [cron]
+    label: Never learn from these platforms
+    description: Turns on these platforms are not captured. Cron runs have no human to learn from.
+  capture_subagents:
+    type: bool
+    default: false
+    label: Learn from subagent turns
+  pressure_scale:
+    type: float
+    default: 25.0
+    label: Sleep pressure scale
+    description: Weighted signal total that reads as 63% pressure. Lower means you get sleepy sooner.
+  retention_days:
+    type: int
+    default: 90
+    label: Keep captured turns for (days)
