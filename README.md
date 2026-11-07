@@ -101,7 +101,7 @@ never loads inside Hermes.
    night. Habits a promoted brain passes in 9 of 10 probes without their text are consolidated and pruned
    from the brain's prompt.
 6. The morning report reads like a sleep study: total sleep time, cycles, N3 and REM share, sleep efficiency
-   (training time over total time), nightmares resolved, habits consolidated, prompt tokens saved per turn,
+   (training time over total time), nightmares resolved, habits consolidated, prompt tokens saved per call,
    exam deltas, and the verdict.
 
 ### Waking: routing
@@ -113,7 +113,7 @@ its credentials, streaming, prompt cache and fallback. For each call Hypnos does
   the brain. This path adds well under 10 ms at p95 (`tests/test_router.py`).
 - Shadow mode, the default for every new brain: your model answers, the brain answers too in the
   background, and Hypnos records whether they agree. A family goes live after 5 agreeing turns.
-- Live: the brain answers from a compact prompt (about 150 tokens instead of about 12,000) with its
+- Live: the brain answers from a compact prompt (about 290 tokens instead of about 12,200) with its
   consolidated habits pruned. The answer must parse, name a tool Hermes offered and match its schema, and
   the brain's mean token log-probability must clear a threshold. If any check fails, your model answers the
   same call instead. A family drops back to shadow after too many fallbacks, a `/hypnos bad`, or when you
@@ -281,6 +281,7 @@ same run promoted only night 1 and the brain never answered a turn.
 |---|---|
 | Capture hook cost | p50 0.006 ms, p95 0.015 ms (budget 5 ms) |
 | Routing passthrough cost | p50 0.016 ms, p95 0.036 ms (budget 10 ms) |
+| The GPU-trained brain v2 served on this laptop's CPU | Four requests it never saw ("Push the payments work.", "Add zod to the API.", "Clean up the old dist output.", "Commit the onboarding changes.") answered with a feature-branch push, `pnpm add zod`, `rm -rf ./dist` and `pnpm test`: 0 calls to the user's model, 7.7 to 11 s per call, about 292 prompt tokens against 12,200. A chat question passed through to the user's model |
 | A brain-answered turn through real Hermes | 0 calls to the user's model; prompt about 12,300 tokens for the frontier against 62 to 136 for the brain, so about 12,200 tokens saved per call |
 | A brain-proposed `rm -rf` outside the project | Blocked by Hermes approvals, folder intact, recorded as a denial |
 | One full night on SmolLM2-135M, CPU, 3 cycles, dreams in Docker | 28.9 min. Held-out next action 50% to 100%, habit probes 0% to 100%, dreams 0% to 100%, 3 of 3 nightmares resolved, lower bound 0.77 against a 0.15 baseline: promoted |

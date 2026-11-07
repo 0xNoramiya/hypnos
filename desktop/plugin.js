@@ -386,7 +386,7 @@ function Report({ ctx }) {
           h(Stat, { label: 'N3 / REM', value: `${pct(r.n3_share)} / ${pct(r.rem_share)}`, hint: 'share of training time' }),
           h(Stat, { label: 'Sleep efficiency', value: pct(r.sleep_efficiency), hint: 'training time / total' }),
           h(Stat, { label: 'Nightmares', value: r.nightmares ? `${r.nightmares_resolved} / ${r.nightmares}` : '0', hint: 'resolved / found' }),
-          h(Stat, { label: 'Tokens saved', value: compact(r.tokens_saved_per_turn), hint: `per routed turn (brain ${compact(r.brain_prompt_tokens)})` })),
+          h(Stat, { label: 'Tokens saved', value: compact(r.tokens_saved_per_turn), hint: `per brain call (brain prompt ~${compact(r.brain_prompt_tokens)})` })),
         h('div', { style: { fontSize: 12, color: 'var(--ui-text-secondary)', display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '4px 16px' } },
           h('div', null, 'Held-out next action'), h(Delta, { before: exam.baseline.heldout_acc, after: exam.candidate.heldout_acc }),
           h('div', null, 'Habit probes'), h(Delta, { before: exam.baseline.probe_pass, after: exam.candidate.probe_pass }),

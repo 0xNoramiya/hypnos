@@ -5,8 +5,9 @@ Definitions:
 - Stage minutes: time between consecutive stage events, attributed to the earlier event's stage.
 - Sleep efficiency: time in N3 and REM (actual training) divided by total sleep time. Clinically it is
   time asleep over time in bed; here "asleep" means "doing useful training steps".
-- Tokens saved per turn: the frontier's prompt tokens (measured by routing, else the Hermes v0.23
-  default of about 12k) minus the brain's compact prompt with consolidated habits pruned.
+- Tokens saved per brain call (``tokens_saved_per_turn``, kept for stored reports): the frontier's prompt
+  tokens (measured by routing, else the Hermes v0.23 default of about 12k) minus an estimate of the brain's
+  compact prompt with consolidated habits pruned. A turn usually makes two calls: the action and the answer.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from collections import defaultdict
 
 from . import db as dbmod
 from .brainfmt import brain_tools, build_messages, estimate_tokens
+from .datasets import latest_offered
 
 DEFAULT_FRONTIER_TOKENS = 12000
 
@@ -28,9 +30,11 @@ def stage_minutes(events: list) -> dict[str, float]:
     return {k: round(v, 2) for k, v in out.items()}
 
 
-def brain_prompt_tokens(statements: list[str]) -> int:
+def brain_prompt_tokens(statements: list[str], offered: list[dict] | None = None) -> int:
+    """Estimate of the brain's prompt for a typical request, with the tools Hermes last offered. The model's
+    chat template adds some tokens on top; routing records the exact count of every call."""
     msgs = build_messages("Install axios.", [], statements)
-    return estimate_tokens(msgs) + estimate_tokens(brain_tools(None, "packages"))
+    return estimate_tokens(msgs) + estimate_tokens(brain_tools(offered, "packages"))
 
 
 def build_report(conn, night_id: int, version: int | None) -> dict:
@@ -59,8 +63,9 @@ def build_report(conn, night_id: int, version: int | None) -> dict:
     awake = [h for h in habits if h["id"] not in consolidated_ids]
     frontier = conn.execute("SELECT AVG(frontier_prompt_tokens) FROM routes WHERE frontier_prompt_tokens > 0").fetchone()[0]
     frontier_tokens = int(frontier) if frontier else DEFAULT_FRONTIER_TOKENS
-    full_brain = brain_prompt_tokens([h["statement"] for h in habits])
-    pruned_brain = brain_prompt_tokens([h["statement"] for h in awake])
+    offered = latest_offered(conn)
+    full_brain = brain_prompt_tokens([h["statement"] for h in habits], offered)
+    pruned_brain = brain_prompt_tokens([h["statement"] for h in awake], offered)
     synthetic = conn.execute("SELECT COUNT(*) FROM episodes WHERE source = 'synthetic'").fetchone()[0] > 0
     nightmares = [dict(e) for e in events if e["event"] in ("nightmare", "nightmare_resolved")]
     resolved = sum(1 for e in nightmares if e["event"] == "nightmare_resolved")
@@ -160,7 +165,7 @@ def render_report(r: dict) -> str:
         lines += [f"  . {h['statement']}" for h in r["habits_awake"]]
     lines.append("")
     lines.append(f"Prompt tokens      frontier ~{r['frontier_prompt_tokens']:,}, brain {r['brain_prompt_tokens']:,} "
-                 f"({r['pruned_tokens']} pruned), ~{r['tokens_saved_per_turn']:,} saved per routed turn")
+                 f"({r['pruned_tokens']} pruned), ~{r['tokens_saved_per_turn']:,} saved per brain call")
     verdict = "PROMOTED" if r["promoted"] else "BAD NIGHT, kept the previous brain"
     lines.append(f"Verdict            {verdict}")
     for reason in r.get("reasons", []):
