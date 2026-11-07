@@ -41,7 +41,7 @@ def pick_device() -> tuple[str, torch.dtype]:
 
 class TorchBackend:
     def __init__(self, base_model: str, adapter: str | None = None, *, trainable: bool = False,
-                 lora: dict | None = None, seed: int = 0, max_len: int = 1024):
+                 lora: dict | None = None, seed: int = 0, max_len: int = 1024, checkpointing: bool | None = None):
         torch.manual_seed(seed)
         random.seed(seed)
         self.device, self.dtype = pick_device()
@@ -68,6 +68,13 @@ class TorchBackend:
             self.model = base
         if trainable and hasattr(self.model, "enable_input_require_grads"):
             self.model.enable_input_require_grads()
+        if trainable and (checkpointing if checkpointing is not None else self.device == "cpu"):
+            # Keep only layer inputs for backward and recompute the rest: a CPU night's peak memory drops by
+            # gigabytes for about 25% more time.
+            try:
+                self.model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+            except (TypeError, ValueError, AttributeError):
+                pass
 
     # --- encoding ------------------------------------------------------------------------------------
 
@@ -102,15 +109,34 @@ class TorchBackend:
             mask[i, :n] = 1
         return ids.to(self.device), labels.to(self.device), mask.to(self.device)
 
+    def _decoder_and_head(self):
+        base = self.model.get_base_model() if hasattr(self.model, "get_base_model") else self.model
+        decoder = getattr(base, "model", None)
+        head = getattr(base, "lm_head", None)
+        return (decoder, head) if decoder is not None and head is not None else (None, None)
+
+    def completion_logprobs(self, items: list[Encoded]) -> tuple[torch.Tensor, torch.Tensor, int]:
+        """Log-probs of completion tokens only, with their sequence index.
+
+        The LM head runs only on completion positions. Projecting every position onto the full vocabulary
+        (batch x length x vocab in fp32) is what made CPU nights need gigabytes.
+        """
+        ids, labels, mask = self._batch(items)
+        targets = labels[:, 1:]
+        valid = targets != -100
+        decoder, head = self._decoder_and_head()
+        if decoder is not None:
+            hidden = decoder(input_ids=ids, attention_mask=mask).last_hidden_state[:, :-1, :]
+            logits = head(hidden[valid]).float()
+        else:
+            logits = self.model(input_ids=ids, attention_mask=mask).logits[:, :-1, :][valid].float()
+        lp = torch.log_softmax(logits, dim=-1).gather(-1, targets[valid].unsqueeze(-1)).squeeze(-1)
+        return lp, valid.nonzero(as_tuple=True)[0], ids.size(0)
+
     def sequence_logprobs(self, items: list[Encoded]) -> torch.Tensor:
         """Sum of completion-token log-probs per sequence."""
-        ids, labels, mask = self._batch(items)
-        logits = self.model(input_ids=ids, attention_mask=mask).logits[:, :-1, :].float()
-        targets = labels[:, 1:]
-        logp = torch.log_softmax(logits, dim=-1)
-        valid = targets != -100
-        gathered = logp.gather(-1, targets.clamp(min=0).unsqueeze(-1)).squeeze(-1)
-        return (gathered * valid).sum(-1)
+        lp, seq, n = self.completion_logprobs(items)
+        return torch.zeros(n, device=lp.device, dtype=lp.dtype).index_add(0, seq, lp)
 
     # --- training ------------------------------------------------------------------------------------
 
@@ -166,8 +192,8 @@ class TorchBackend:
                         chunk.append(pool[cursor])
                         cursor += 1
                     if kind == "sft":
-                        ids, labels, mask = self._batch(chunk)
-                        loss = self.model(input_ids=ids, attention_mask=mask, labels=labels).loss
+                        lp, _, _ = self.completion_logprobs(chunk)
+                        loss = -lp.mean()
                     else:
                         loss, acc = self._dpo_loss(chunk, ref, beta)
                         stats["dpo_acc"].append(acc)
@@ -219,7 +245,7 @@ class TorchBackend:
                 chunk = items[start:start + batch_size]
                 texts = [render_prompt(tok, x["messages"], x.get("tools") or []) for x in chunk]
                 enc = tok(texts, return_tensors="pt", padding=True, add_special_tokens=False).to(self.device)
-                kwargs = dict(max_new_tokens=max_new_tokens, do_sample=False, output_scores=True,
+                kwargs = dict(max_new_tokens=max_new_tokens, do_sample=False, output_scores=True, use_cache=True,
                               return_dict_in_generate=True, pad_token_id=tok.pad_token_id)
                 try:
                     # A tool call is complete at </tool_call>; stopping there saves most of the budget.

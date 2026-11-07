@@ -41,7 +41,8 @@ def run_night(job: dict) -> dict:
     hyper = job.get("hyper") or {}
     emit({"event": "loading", "base_model": job["base_model"], "parent": job.get("parent_adapter")})
     backend = TorchBackend(job["base_model"], job.get("parent_adapter"), trainable=True, lora=hyper.get("lora"),
-                           seed=int(job.get("seed", 0)), max_len=int(hyper.get("max_len", 1024)))
+                           seed=int(job.get("seed", 0)), max_len=int(hyper.get("max_len", 1024)),
+                           checkpointing=hyper.get("gradient_checkpointing"))
     emit({"event": "loaded", "device": backend.device, "dtype": str(backend.dtype)})
     if hyper.get("batch_size", "auto") == "auto":
         # Effective batch 8 either way; the orchestrator plans steps with that assumption.
