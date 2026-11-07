@@ -187,3 +187,21 @@ Cut order if forced: Tinker backend, pet, `/brain export`, `mlx` backend.
   Tinker). Needed by M3 for a real GPU night; CPU covers everything before that.
 - Hermes Desktop for screenshots and the video: Desktop runs on the Windows side and connects to this WSL
   Hermes, or runs on the pod.
+
+## 6. Where the build differs from the spec
+
+| Spec | Built | Why |
+|---|---|---|
+| Model provider `hypnos` | `llm_execution` middleware | C3: a provider cannot reach the user's model without its credentials |
+| `mlx`, `cuda` (TRL), `tinker` backends | One `torch` backend for CUDA and CPU; MLX and Tinker not written | No Mac or Tinker key to test with; Tinker was first in the cut order |
+| Resumable nights | An interrupted night is marked `interrupted` and the next one starts fresh | Training is short; mid-night resume added risk for little gain |
+| Optional `ctx.llm` correction classifier | Deterministic EN and ID patterns only | Patterns covered the persona and test set; a classifier costs a model call per turn |
+| Pet drowsy, asleep, awake | Speech-bubble lines | C14 |
+| Per-reply badge | Transcript directive, Desktop only, behind a setting | C11 |
+| Hypnogram pane | Workspace tab plus the report page | C12 |
+| Nightly schedule | `hermes hypnos schedule` writes the cron script and prints the `hermes cron create` command | C10 |
+| `pre_tool_call` capture | Not registered | C6: it fails closed |
+
+Measured on this machine: capture hooks p95 under 5 ms and passthrough routing p95 under 10 ms (tests);
+LoRA generation through the PEFT wrapper is about 12x slower than with the adapter merged, so inference
+always merges.
