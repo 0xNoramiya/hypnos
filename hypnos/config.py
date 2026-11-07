@@ -30,6 +30,10 @@ DEFAULTS: dict[str, Any] = {
     "brain_max_context": 3072,
     "brain_endpoint": "",
     "auto_start_brain_server": True,
+    "teacher": "auto",
+    "dream_variants": 4,
+    "teacher_budget_tokens": 60000,
+    "sandbox": True,
 }
 
 

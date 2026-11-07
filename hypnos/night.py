@@ -185,16 +185,17 @@ class Night:
         old = [e for e in train_all if e.episode_id in seen]
         replay = rng.sample(old, min(len(old), int(len(new) * self.cfg.replay_ratio) + 4)) if old else []
         pairs = ds.pair_examples(self.conn)
-        dreams = self.dreamer.pairs() if self.dreamer else []
+        dream_ids = [r[0] for r in self.conn.execute("SELECT id FROM dreams WHERE night_id = ? AND excluded = 0",
+                                                     (self.night_id,))]
         sft_rows, seen_keys = [], set()
-        for ex in new + replay + [p.as_sft() for p in pairs] + [d.as_sft() for d in dreams if d.gold]:
+        for ex in new + replay + [p.as_sft() for p in pairs]:
             key = json.dumps([ex.user, ex.history, ex.target], sort_keys=True, default=str)
             if key in seen_keys:
                 continue
             seen_keys.add(key)
             with_text = ds.habit_text_mask(ex.id, self.cfg.habit_text_share)
             sft_rows.append(ex.render(habit_texts if with_text else []))
-        dpo_rows = [p.render([]) for p in pairs + dreams]
+        dpo_rows = [p.render([]) for p in pairs]
         exam_items = []
         heldout = ds.episode_examples(self.conn, "heldout")[-self.cfg.max_heldout:]
         for ex in heldout:
@@ -225,10 +226,10 @@ class Night:
                                replay=[e.episode_id for e in replay if e.episode_id],
                                params={"cycles": self.cfg.cycles, "epochs_sft": self.cfg.epochs_sft,
                                        "epochs_dpo": self.cfg.epochs_dpo, "habit_text_share": self.cfg.habit_text_share,
-                                       "dreams": [d.id for d in dreams]})
+                                       "dreams": dream_ids})
         return {"paths": paths, "sft": sft_rows, "dpo": dpo_rows, "exam_items": exam_items, "manifest": manifest,
                 "habit_families": habit_families, "new": len(new), "replay": len(replay), "pairs": len(pairs),
-                "dreams": len(dreams), "heldout": len(heldout)}
+                "dreams": len(dream_ids), "heldout": len(heldout)}
 
     # --- the night -----------------------------------------------------------------------------------
 
@@ -260,10 +261,18 @@ class Night:
             ds.assign_families(self.conn)
             splits = ds.assign_splits(self.conn)
             refreshed = habitsmod.refresh(self.conn, self.memories_dir)
+            python = resolve_trainer_python(cfg.trainer_python, self.data_dir)
+            parent = self._parent()
+            if parent and parent["base_model"] != cfg.model:
+                self.event("N2", "new_base_model", was=parent["base_model"], now=cfg.model)
+                parent = None
             if self.dreamer:
+                if python is not None and getattr(self.dreamer, "_generate", None) is None:
+                    from .dreams import worker_generate
+                    self.dreamer._generate = worker_generate(python, cfg.model, parent["adapter_path"] if parent else None,
+                                                             {"batch_size": "auto", **cfg.hyper})
                 self.event("N2", "dreaming_up_variants")
                 self.dreamer.prepare(self)
-            parent = self._parent()
             data = self.build_data(night_dir, parent)
             self.event("N2", "plan", new_episodes=data["new"], replay=data["replay"], pairs=data["pairs"],
                        dreams=data["dreams"], heldout=data["heldout"], exam_items=len(data["exam_items"]),
@@ -273,7 +282,6 @@ class Night:
                 report = {"status": "skipped", "reason": "Nothing new to learn. Use Hermes for a while first."}
                 self._finish("skipped", report)
                 return report
-            python = resolve_trainer_python(cfg.trainer_python, self.data_dir)
             if python is None:
                 raise NightError(install_hint(self.data_dir))
             phases = schedule(cfg.cycles, steps_for(len(data["sft"]), cfg.epochs_sft, cfg),
@@ -299,6 +307,8 @@ class Night:
             cand_scores, results = exammod.grade(data["exam_items"], candidate_out)
             decision = exammod.decide(cand_scores, base_scores, threshold=cfg.consolidation_threshold,
                                       habit_families=data["habit_families"])
+            if self.dreamer:
+                self.dreamer.after_exam(results)
             brain_status = "promoted" if decision.promote else "rejected"
             exam_record = {"candidate": cand_scores.as_dict(), "baseline": base_scores.as_dict(),
                            "baseline_label": f"v{parent['version']}" if parent else "base model",

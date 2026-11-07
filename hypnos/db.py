@@ -221,6 +221,28 @@ CREATE TABLE toolsets (
     created_at REAL NOT NULL
 );
 """),
+    (2, """
+-- REM dreams: practised variants of the day's mistakes, with their verifier and outcome.
+CREATE TABLE dreams (
+    id             INTEGER PRIMARY KEY,
+    night_id       INTEGER,
+    habit_id       INTEGER REFERENCES habits(id) ON DELETE CASCADE,
+    family         TEXT,
+    kind           TEXT,
+    prompt_json    TEXT NOT NULL,
+    checker_json   TEXT NOT NULL,
+    chosen_json    TEXT,
+    attempt_json   TEXT,
+    attempt_passed INTEGER,
+    nightmare      INTEGER NOT NULL DEFAULT 0,
+    resolved       INTEGER,
+    teacher        TEXT,
+    verified_by    TEXT,
+    created_at     REAL NOT NULL,
+    excluded       INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX dreams_night ON dreams(night_id);
+"""),
 ]
 
 LATEST = MIGRATIONS[-1][0]

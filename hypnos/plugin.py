@@ -92,7 +92,15 @@ def register(ctx: Any) -> None:
     ctx.register_command("brain", handler=brain_command, description="Hypnos brain versions and lineage",
                          args_hint="[list|rollback N]")
 
+    if hasattr(ctx, "register_auxiliary_task"):
+        try:
+            ctx.register_auxiliary_task("hypnos_teacher", display_name="Hypnos teacher",
+                                        description="Writes REM dream variants at night (budget-capped)",
+                                        defaults={"timeout": 120})
+        except Exception:
+            log.debug("hypnos: could not register the teacher task", exc_info=True)
+
     from . import cli
     ctx.register_cli_command("hypnos", help="Hypnos: Hermes learns in its sleep",
-                             setup_fn=cli.setup, handler_fn=lambda args: cli.run(args, commands),
+                             setup_fn=cli.setup, handler_fn=lambda args: cli.run(args, commands, llm=ctx.llm),
                              description="Inspect and run Hypnos (status, doctor)")

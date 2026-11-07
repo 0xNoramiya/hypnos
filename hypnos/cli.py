@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import subprocess
 import sys
 from typing import Any
@@ -39,7 +38,7 @@ def setup(parser: argparse.ArgumentParser) -> None:
     mark.add_argument("note", nargs="*")
 
 
-def run(args: Any, commands: Any) -> int:
+def run(args: Any, commands: Any, llm: Any = None) -> int:
     cmd = getattr(args, "hypnos_cmd", None) or "status"
     if cmd == "status":
         print(commands.status())
@@ -64,7 +63,8 @@ def run(args: Any, commands: Any) -> int:
         return sleepcmd.run_sleep(db_path=hermes.db_path(), data_dir=hermes.data_dir(), memories_dir=hermes.memories_dir(),
                                   settings=commands.settings(), tiny=args.tiny, cycles=args.cycles,
                                   max_minutes=args.max_minutes, trigger=args.trigger, if_idle=args.if_idle,
-                                  broadcast=hermes.broadcast, quiet=args.quiet)
+                                  broadcast=hermes.broadcast, quiet=args.quiet,
+                                  llm=llm if commands.settings().get("teacher", "auto") != "scripted" else None)
     if cmd == "report":
         from .sleepcmd import report_text
         print(report_text(hermes.db_path(), args.night))
@@ -159,14 +159,9 @@ def doctor() -> bool:
         except (OSError, subprocess.SubprocessError) as exc:
             detail = str(exc)
     all_ok &= _check("trainer interpreter", trainer_ok, detail, install_hint(data))
-    docker = shutil.which("docker")
-    docker_ok = False
-    if docker:
-        try:
-            docker_ok = subprocess.run([docker, "info", "--format", "{{.ServerVersion}}"], capture_output=True,
-                                       text=True, timeout=10).returncode == 0
-        except (OSError, subprocess.SubprocessError):
-            docker_ok = False
-    _check("docker sandbox for REM dreams", docker_ok, "available" if docker_ok else "not available",
-           "Without Docker, REM runs in lucid mode: pattern verifiers only, no execution.")
+    from . import sandbox
+    usable, reason = sandbox.available()
+    _check("docker sandbox for REM dreams", usable, "ready" if usable else reason,
+           f"Optional. Without it, REM runs in lucid mode (pattern verifiers only, no execution).\n"
+           f"To enable: {sandbox.PULL_HINT}")
     return all_ok

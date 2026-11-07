@@ -34,7 +34,7 @@ def night_config(settings: dict, *, tiny: bool = False, cycles: int | None = Non
 def run_sleep(*, db_path: str, data_dir: Path, memories_dir: Path | None, settings: dict, tiny: bool = False,
               cycles: int | None = None, max_minutes: float | None = None, trigger: str = "manual",
               if_idle: float | None = None, broadcast: Callable[[str, dict], None] | None = None,
-              out: Callable[[str], None] = print, quiet: bool = False) -> int:
+              out: Callable[[str], None] = print, quiet: bool = False, llm: object = None) -> int:
     conn = dbmod.open_db(db_path)
     if if_idle:
         last = dbmod.get_meta(conn, "last_activity") or 0
@@ -45,7 +45,14 @@ def run_sleep(*, db_path: str, data_dir: Path, memories_dir: Path | None, settin
     conn.close()
     cfg = night_config(settings, tiny=tiny, cycles=cycles, max_minutes=max_minutes, trigger=trigger)
     log = (lambda s: None) if quiet else out
-    night = Night(db_path, data_dir, cfg, memories_dir=memories_dir, broadcast=broadcast, log=log)
+    from .dreams import Dreamer, LLMTeacher, ScriptedTeacher
+    mode = str(settings.get("teacher") or "auto")
+    scripted = ScriptedTeacher(seed=int(time.time()))
+    teacher = scripted if (mode == "scripted" or llm is None) else LLMTeacher(
+        llm, int(settings.get("teacher_budget_tokens") or 60000), fallback=scripted)
+    dreamer = Dreamer(teacher, k=int(settings.get("dream_variants") or 4) if not tiny else 3,
+                      use_sandbox=bool(settings.get("sandbox", True)))
+    night = Night(db_path, data_dir, cfg, memories_dir=memories_dir, broadcast=broadcast, log=log, dreamer=dreamer)
     try:
         report = night.run()
     except NightError as exc:

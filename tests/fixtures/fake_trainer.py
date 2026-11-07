@@ -45,6 +45,14 @@ def run_evals(when):
         emit({"event": "exam_end", "name": ev["name"]})
 
 
+if job.get("kind") == "generate":
+    items = [json.loads(line) for line in open(job["prompts_path"]) if line.strip()]
+    with open(job["out_path"], "w") as fh:
+        for it in items:
+            fh.write(json.dumps({"id": it["id"], "text": answer(it, bool(job.get("adapter"))), "mean_logprob": -0.5,
+                                 "tokens": 20}) + "\n")
+    emit({"event": "done", "out_path": job["out_path"], "n": len(items)})
+    sys.exit(0)
 if os.environ.get("HYPNOS_FAKE_FAIL"):
     emit({"event": "error", "message": "simulated failure"})
     sys.exit(1)
